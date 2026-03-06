@@ -21,7 +21,8 @@ from ..worker import (
     AddUAItemMessage,
     AddUAFinishedMessage,
     GetUAStatusRequest,
-    GetUAStatusResponse
+    GetUAStatusResponse,
+    UAChangedStatusMessage
 )
 from ..config import Config
 
@@ -137,14 +138,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             assert r.user_agent == self.activeUserAgent
             self.userAgentStatusValue.setText(r.status.name)
 
+        if isinstance(r, UAChangedStatusMessage):
+            if r.user_agent == self.activeUserAgent:
+                self.userAgentStatusValue.setText(r.status.name)
+
     def set_active_user_agent(self, user_agent: UserAgent):
         self.activeUserAgent = user_agent
         self.userAgentUserValue.setText(str(user_agent.user))
         self.userAgentDomainValue.setText(user_agent.domain)
-        self.dialGroupBox.setVisible(True)
-
-        # self.requestWorker.emit(GetUAStatusRequest(user_agent=self.activeUserAgent))
         self.userAgentStatusValue.setText("")
+        self.dialGroupBox.setVisible(True)
+        self.requestWorker.emit(GetUAStatusRequest(user_agent=self.activeUserAgent))
 
     def closeEvent(self, ev):
         self.workerThread.quit()

@@ -124,6 +124,7 @@ class Worker(QObject):
             new_status = state.baresip.get_user_agent_status()
             if new_status != state.status:
                 self.sendMessage.emit(UAChangedStatusMessage(ua, new_status))
+                state.status = new_status
 
     @pyqtSlot(WorkerInputMessage)
     def receive_message(self, message):
