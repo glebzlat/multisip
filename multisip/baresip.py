@@ -63,6 +63,8 @@ class BareSIP:
 
     def start(self) -> UserAgentStatus:
         self._process = pexpect.spawn('baresip', encoding='utf-8')
+        self._pid = self._process.pid
+
         self._thread = threading.Thread(target=self._parse, daemon=True)
         self._thread.start()
 
