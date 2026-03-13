@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QVBoxLayout,
+    QHBoxLayout,
     QMainWindow,
     QSizePolicy,
     QSpacerItem
@@ -30,6 +31,7 @@ from ..worker import (
     RemoveUserAgent,
     UserAgentRemoved
 )
+from ..icon_manager import get_icon
 from ..config import Config
 
 
@@ -164,11 +166,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def handle_worker_sendMessage(self, r: WorkerOutputMessage):
         if isinstance(r, AddUAItemMessage):
-            label = QLabel(f"{r.user_agent.user} @ {r.user_agent.domain}")
             item = ClickableItem()
             item.clicked.connect(lambda: self.setActiveUserAgent(r.user_agent))
-            layout = QVBoxLayout()
+            layout = QHBoxLayout()
+            label = QLabel(f"{r.user_agent.user} @ {r.user_agent.domain}")
             layout.addWidget(label)
+            spacer = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+            layout.addItem(spacer)
+            hangupButton = QPushButton()
+            hangupButton.setIcon(get_icon("hangup"))
+            hangupButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            layout.addWidget(hangupButton)
+            muteButton = QPushButton()
+            muteButton.setIcon(get_icon("unmuted"))
+            muteButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            layout.addWidget(muteButton)
+            deleteButton = QPushButton()
+            deleteButton.setIcon(get_icon("cross"))
+            deleteButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            layout.addWidget(deleteButton)
             item.setLayout(layout)
             self.userAgentsScrollVBox.insertWidget(r.append_index, item, 0, Qt.AlignmentFlag.AlignTop)
             self.userAgents[r.user_agent] = UserAgentWidgetState(widget=item)
