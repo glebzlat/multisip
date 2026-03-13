@@ -2,8 +2,6 @@ import time
 import logging
 import threading
 import pexpect
-import enum
-import types
 
 from typing import Optional, Callable
 from datetime import timedelta
@@ -11,22 +9,16 @@ from datetime import timedelta
 from .user_agent import Status as UserAgentStatus
 
 
-def handle_expect(expectation: str):
+def handle_expect(expectation: str | tuple[str]):
 
     def expect_decorator(meth):
+        nonlocal expectation
+        if isinstance(expectation, str):
+            expectation = (expectation,)
         setattr(meth, "_expectation", expectation)
         return meth
 
     return expect_decorator
-
-
-class Event(enum.Enum):
-    READY = "READY",
-    CALLING = "CALLING",
-    ANSWERED = "ANSWERED",
-    INCOMING_CALL = "INCOMING_CALL",
-    TERMINATED = "TERMINATED",
-    UA_REGISTED = "UA_REGISTED",
 
 
 class BareSIP:
@@ -47,17 +39,18 @@ class BareSIP:
 
         self._semaphore_user_agents = 0
 
-        self._handlers: dict[str, Callable] = {}
+        self._handlers: dict[tuple[str], Callable] = {}
         for mem_name in dir(self):
             mem = getattr(self, mem_name)
             if (exp := getattr(mem, "_expectation", None)) is not None:
                 self._handlers[exp] = mem
 
+        self._line_chars = []
+        self._line = None
+
         self._expectations = list(self._handlers.keys())
-        self._callbacks = {}
 
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._logger.propagate = False
         self._logger.setLevel(log_level)
 
         self._pid = 0
@@ -68,13 +61,15 @@ class BareSIP:
     def is_ready(self):
         return self._is_ready
 
-    def start(self):
+    def start(self) -> UserAgentStatus:
         self._process = pexpect.spawn('baresip', encoding='utf-8')
         self._thread = threading.Thread(target=self._parse, daemon=True)
         self._thread.start()
 
         self._is_running = True
         self._wait_for_ready()
+
+        return self._create_user_agent()
 
     def stop(self):
         if not self._stop_event.is_set():
@@ -93,9 +88,6 @@ class BareSIP:
             self._log_debug("baresip stopped")
 
         self._is_running = False
-
-    def on(self, event: Event, callback: types.FunctionType) -> bool:
-        self._callbacks[event] = callback
 
     def get_user_agent_status(self) -> Optional[UserAgentStatus]:
         # Wait for response using semaphore
@@ -116,7 +108,27 @@ class BareSIP:
 
         return None
 
-    def create_user_agent(self) -> Optional[UserAgentStatus]:
+    def dial(self, address: str):
+        self._log_debug("Dial %s", address)
+        self._send(f"/dial {address}")
+
+    def hangup(self):
+        self._log_debug("Hangup")
+        self._send("/hangup")
+
+    def hangup_all(self):
+        self._log_debug("Hangup all")
+        self._send("/hangupall")
+
+    def answer(self):
+        self._log_debug("Answer")
+        self._send("/accept")
+
+    def __del__(self):
+        if self._process:
+            self.stop()
+
+    def _create_user_agent(self) -> Optional[UserAgentStatus]:
         # Wait for response using semaphore
         # Increase semaphore value before sending command, since it will
         # immediately produce output
@@ -135,22 +147,6 @@ class BareSIP:
 
         return None
 
-    def dial(self, address: str):
-        self._send(f"/dial {address}")
-
-    def hangup(self):
-        self._send("/hangup")
-
-    def hangup_all(self):
-        self._send("/hangupall")
-
-    def answer(self):
-        self._send("/answer")
-
-    def __del__(self):
-        if self._process:
-            self.stop()
-
     def _send(self, command: str) -> bool:
         if self._is_ready:
             self._process.sendline(command)
@@ -163,15 +159,32 @@ class BareSIP:
         self._log_debug("output parser active")
 
         while not self._stop_event.is_set():
-            self._process_line()
+            self._read_char()
+            if self._line:
+                self._process_line()
+                self._clear_line()
 
         self._log_debug("output parser stopped")
 
+    def _read_char(self):
+        try:
+            c = self._process.read_nonblocking(1, timeout=0)
+            self._line_chars.append(c)
+            if c == "\n":
+                self._line = "".join(self._line_chars)
+        except pexpect.TIMEOUT:
+            pass
+
+    def _clear_line(self):
+        self._line = None
+        self._line_chars.clear()
+
     def _process_line(self):
         try:
-            expect = self._expectations[self._process.expect(self._expectations, timeout=0)]
-            handler = self._handlers[expect]
-            handler()
+            for expectations, handler in self._handlers.items():
+                for expect in expectations:
+                    if expect in self._line:
+                        handler()
         except pexpect.EOF:
             self._log_error("parser recieved EOF")
             self.stop()
@@ -184,11 +197,11 @@ class BareSIP:
     def _handle_ready(self):
         self._is_ready = True
         self._logger.debug("baresip is ready")
-        self._callback(Event.READY)
+        self.handle_ready()
 
     @handle_expect("--- User Agents ")
     def _handle_uas_list(self):
-        line = self._process.readline().strip()
+        line = self._line
 
         agents_count = int(line[line.index("(") + 1:line.index(")")])
         assert agents_count == 1
@@ -205,27 +218,27 @@ class BareSIP:
 
     @handle_expect("useragent registered successfully")
     def _handle_register(self):
-        self._callback(Event.UA_REGISTERED)
+        self.handle_register()
 
     @handle_expect("Call in-progress: ")
     def _handle_in_progress(self):
-        uri = self._process.readline().strip()
+        uri = self._line.split(":")[1].strip()
         self._log_debug(f"call in-progress: {uri}")
-        self._callback(Event.CALLING, uri)
+        self.handle_call_in_progress(uri)
 
     @handle_expect("Call answered: ")
     def _handle_answered(self):
-        uri = self._process.readline().strip()
+        uri = self._line.split(":")[1].strip()
         self._log_debug(f"call answered: {uri}")
-        self._callback(Event.ANSWERED, uri)
+        self.handle_call_answered(uri)
 
     @handle_expect("session closed")
-    def _handle_hungup(self):
-        self._process.readline()
-        line = self._process.readline().strip()
-        uri = ''.join(line.split("Call with ")[1].split(" terminated")[0])
-        self._log_debug(f"call terminated: {uri}")
-        self._callback(Event.TERMINATED, uri)
+    def _handle_hangup(self):
+        line = self._line
+        reason = line.split("session closed:")[1].strip()
+        uri = line.split(": session closed:")[0].strip()
+        self._log_debug(f"call with {uri} terminated: {reason}")
+        self.handle_hangup_call(uri, reason)
 
     @handle_expect("could not find UA")
     def _handle_no_ua(self):
@@ -233,10 +246,10 @@ class BareSIP:
 
     @handle_expect("Incoming call from: ")
     def _handle_incoming_call(self):
-        line = self._process.readline().strip()
-        uri = line[line.index(" ") + 1:line.index(" - ")]
-        self._log_debug(f"incoming call from: {uri}")
-        self._callback(Event.INCOMING_CALL, uri)
+        line = self._line
+        uri = line.split("Incoming call from: ")[1].split(" - ")[0].strip()
+        self._log_debug(f"Incoming call from: {uri}")
+        self.handle_incoming_call(uri)
 
     def _wait_for_ready(self):
         for _ in range(self._timeout.seconds * self._timeout_check_frequency_hz):
@@ -244,18 +257,32 @@ class BareSIP:
                 return
             time.sleep(1 / self._timeout_check_frequency_hz)
 
-    def _callback(self, event: Event, *args):
-        if (fn := self._callbacks.get(event, None)) is not None:
-            fn(self, *args)
-
     def _log_error(self, message: str, *args):
-        if self._logger.level >= logging.ERROR:
-            self._logger.error(f"BareSIP<{self._pid}>: {message}", *args)
+        if self._logger.level <= logging.ERROR:
+            self._logger.error(f"{self._pid}: {message}", *args)
 
     def _log_info(self, message: str, *args):
-        if self._logger.level >= logging.INFO:
-            self._logger.info(f"BareSIP<{self._pid}>: {message}", *args)
+        if self._logger.level <= logging.INFO:
+            self._logger.info(f"{self._pid}: {message}", *args)
 
     def _log_debug(self, message: str, *args):
-        if self._logger.level >= logging.DEBUG:
-            self._logger.debug(f"BareSIP<{self._pid}>: {message}", *args)
+        if self._logger.level <= logging.DEBUG:
+            self._logger.debug(f"{self._pid}: {message}", *args)
+
+    def handle_ready(self):
+        pass
+
+    def handle_register(self):
+        pass
+
+    def handle_call_in_progress(self, uri: str):
+        pass
+
+    def handle_call_answered(self, uri: str):
+        pass
+
+    def handle_incoming_call(self, uri: str):
+        pass
+
+    def handle_hangup_call(self, uri: str, reason: str):
+        pass
