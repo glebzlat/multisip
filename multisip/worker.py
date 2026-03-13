@@ -85,6 +85,11 @@ class UserAgentState:
     status: UserAgentStatus
 
 
+def get_number_from_uri(uri: str) -> str:
+    start, end = uri.index(':'), uri.index('@')
+    return uri[start + 1:end]
+
+
 class BareSIPHandle(BareSIP):
 
     def __init__(self, worker, *args, **kwargs):
@@ -202,8 +207,8 @@ class Worker(QObject):
         state = self._user_agents[message.user_agent]
         state.baresip.hangup()
 
-    def add_call(self, ua: UserAgent, number: str):
-        self.sendMessage.emit(IncomingCall(ua, number))
+    def add_call(self, ua: UserAgent, uri: str):
+        self.sendMessage.emit(IncomingCall(ua, get_number_from_uri(uri)))
 
     def remove_call(self, ua: UserAgent):
         self.sendMessage.emit(SessionTerminated(ua))
