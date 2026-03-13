@@ -54,6 +54,22 @@ class UAChangedStatusMessage(WorkerOutputMessage):
     status: UserAgentStatus
 
 
+@dataclass(frozen=True)
+class HangupCall(WorkerInputMessage):
+    user_agent: UserAgent
+
+
+@dataclass(frozen=True)
+class SessionTerminated(WorkerOutputMessage):
+    user_agent: UserAgent
+
+
+@dataclass(frozen=True)
+class IncomingCall(WorkerOutputMessage):
+    user_agent: UserAgent
+    call_number: str
+
+
 def handle(event: type):
 
     def handle_decorator(meth):
@@ -67,6 +83,20 @@ def handle(event: type):
 class UserAgentState:
     baresip: BareSIP
     status: UserAgentStatus
+
+
+class BareSIPHandle(BareSIP):
+
+    def __init__(self, worker, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._worker = worker
+
+    def handle_incoming_call(self, uri: str):
+        self.answer()
+        self._worker.add_call(self._user_agent, uri)
+
+    def handle_hangup_call(self, uri: str, reason: str):
+        self._worker.remove_call(self._user_agent)
 
 
 class Worker(QObject):
@@ -104,13 +134,16 @@ class Worker(QObject):
     def stop(self):
         self._timer.stop()
         for _, state in self._user_agents.items():
+            state.baresip.hangup()
             state.baresip.stop()
 
     def poll(self):
         if self._message:
             handler = self._handlers[self._message.__class__]
-            for resp in handler(self._message):
-                self.sendMessage.emit(resp)
+            message_stream = handler(self._message)
+            if message_stream is not None:
+                for message in message_stream:
+                    self.sendMessage.emit(message)
             self._message = None
 
         else:
@@ -142,9 +175,8 @@ class Worker(QObject):
                 password=user_agent_password_from_user(user)
             )
 
-            instance = BareSIP(ua, log_level=logging.DEBUG)
-            instance.start()
-            status = instance.create_user_agent()
+            instance = BareSIPHandle(self, ua, log_level=logging.DEBUG)
+            status = instance.start()
 
             self._user_agents[ua] = UserAgentState(
                 baresip=instance,
@@ -164,3 +196,14 @@ class Worker(QObject):
     def _handle_get_status(self, message: GetUAStatusRequest):
         status = self._user_agents[message.user_agent].status
         yield GetUAStatusResponse(user_agent=message.user_agent, status=status)
+
+    @handle(HangupCall)
+    def _handle_hangup(self, message: HangupCall):
+        state = self._user_agents[message.user_agent]
+        state.baresip.hangup()
+
+    def add_call(self, ua: UserAgent, number: str):
+        self.sendMessage.emit(IncomingCall(ua, number))
+
+    def remove_call(self, ua: UserAgent):
+        self.sendMessage.emit(SessionTerminated(ua))

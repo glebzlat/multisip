@@ -1,4 +1,5 @@
-from typing import Generator
+from typing import Optional
+from dataclasses import dataclass, field
 
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -22,9 +23,18 @@ from ..worker import (
     AddUAFinishedMessage,
     GetUAStatusRequest,
     GetUAStatusResponse,
-    UAChangedStatusMessage
+    UAChangedStatusMessage,
+    IncomingCall,
+    HangupCall,
+    SessionTerminated
 )
 from ..config import Config
+
+
+@dataclass
+class UserAgentWidgetState:
+    widget: QWidget
+    active_call_number: Optional[str] = field(default=None, init=False)
 
 
 class ClickableItem(QWidget):
@@ -101,7 +111,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.requestWorker.connect(self.worker.receive_message)
         self.workerThread.start()
 
+        self.hangupCallButton.clicked.connect(self.handle_hangupCallButton_clicked)
+
         self.activeUserAgent = None
+        self.userAgents = {}
 
         self.config = config
 
@@ -117,10 +130,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             )
         )
 
+    def handle_hangupCallButton_clicked(self):
+        self.requestWorker.emit(HangupCall(self.activeUserAgent))
+        self.userAgents[self.activeUserAgent].active_call_number = None
+        self.callGroupBox.setVisible(False)
+
     def handle_worker_sendMessage(self, r: WorkerOutputMessage):
         if isinstance(r, AddUAItemMessage):
-            if self.activeUserAgent is None:
-                self.set_active_user_agent(r.user_agent)
             label = QLabel(f"{r.user_agent.user} @ {r.user_agent.domain}")
             item = ClickableItem()
             item.clicked.connect(lambda: self.set_active_user_agent(r.user_agent))
@@ -128,6 +144,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             layout.addWidget(label)
             item.setLayout(layout)
             self.userAgentsScrollVBox.insertWidget(r.append_index, item, 0, Qt.AlignmentFlag.AlignTop)
+            self.userAgents[r.user_agent] = UserAgentWidgetState(widget=item)
+            if self.activeUserAgent is None:
+                self.set_active_user_agent(r.user_agent)
             return
 
         if isinstance(r, AddUAFinishedMessage):
@@ -142,13 +161,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if r.user_agent == self.activeUserAgent:
                 self.userAgentStatusValue.setText(r.status.name)
 
+        if isinstance(r, IncomingCall):
+            self.userAgents[r.user_agent].active_call_number = r.call_number
+            if r.user_agent == self.activeUserAgent:
+                self.callGroupBox.setVisible(True)
+                self.callNumberValue.setText(r.call_number)
+
+        if isinstance(r, SessionTerminated):
+            self.userAgents[r.user_agent].active_call_number = None
+            if r.user_agent == self.activeUserAgent:
+                self.callGroupBox.setVisible(False)
+                self.callNumberValue.setText("")
+
     def set_active_user_agent(self, user_agent: UserAgent):
         self.activeUserAgent = user_agent
         self.userAgentUserValue.setText(str(user_agent.user))
         self.userAgentDomainValue.setText(user_agent.domain)
         self.userAgentStatusValue.setText("")
-        self.dialGroupBox.setVisible(True)
         self.requestWorker.emit(GetUAStatusRequest(user_agent=self.activeUserAgent))
+
+        state = self.userAgents[user_agent]
+        if state.active_call_number:
+            self.callGroupBox.setVisible(True)
+            self.callNumberValue.setText(state.active_call_number)
+        else:
+            self.callGroupBox.setVisible(False)
 
     def closeEvent(self, ev):
         self.workerThread.quit()
