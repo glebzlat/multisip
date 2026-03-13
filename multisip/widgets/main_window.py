@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Iterable
 from dataclasses import dataclass, field
 
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
@@ -26,7 +26,9 @@ from ..worker import (
     UAChangedStatusMessage,
     IncomingCall,
     HangupCall,
-    SessionTerminated
+    SessionTerminated,
+    RemoveUserAgent,
+    UserAgentRemoved
 )
 from ..config import Config
 
@@ -86,6 +88,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.callGroupBox.setVisible(False)
         self.dialingGroupBox.setVisible(False)
 
+        self.deleteAllButton.clicked.connect(self.handle_deleteAllButton_clicked)
         self.addUserAgentsButton.clicked.connect(self.handle_addUserAgentsButton_clicked)
 
         self.addUserAgentsForm = AddUserAgents()
@@ -111,12 +114,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.requestWorker.connect(self.worker.receive_message)
         self.workerThread.start()
 
+        self.deleteUAButton.clicked.connect(self.handle_deleteUAButton_clicked)
         self.hangupCallButton.clicked.connect(self.handle_hangupCallButton_clicked)
 
         self.activeUserAgent = None
-        self.userAgents = {}
+        self.userAgents: dict[UserAgent, UserAgentWidgetState] = {}
+        self.userAgentIter: Optional[Iterable[tuple[UserAgent, UserAgentWidgetState]]] = None
 
         self.config = config
+
+    def handle_deleteAllButton_clicked(self):
+        if not self.userAgents:
+            return
+        self.userAgentIter = iter(reversed(self.userAgents.items()))
+
+        ua, state = next(self.userAgentIter)
+        self.userAgentsScrollVBox.removeWidget(state.widget)
+        state.widget.deleteLater()
+        self.requestWorker.emit(RemoveUserAgent(ua, remove_all=True))
+
+        self.setActiveUserAgent(None)
 
     def handle_addUserAgentsButton_clicked(self):
         self.addUserAgentsForm.show()
@@ -130,6 +147,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             )
         )
 
+    def handle_deleteUAButton_clicked(self):
+        state = self.userAgents[self.activeUserAgent]
+        self.userAgentsScrollVBox.removeWidget(state.widget)
+        state.widget.deleteLater()
+        self.requestWorker.emit(RemoveUserAgent(self.activeUserAgent))
+        del self.userAgents[self.activeUserAgent]
+
+        prevUA = self.findPreviousUserAgent(self.activeUserAgent)
+        self.setActiveUserAgent(prevUA)
+
     def handle_hangupCallButton_clicked(self):
         self.requestWorker.emit(HangupCall(self.activeUserAgent))
         self.userAgents[self.activeUserAgent].active_call_number = None
@@ -139,14 +166,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if isinstance(r, AddUAItemMessage):
             label = QLabel(f"{r.user_agent.user} @ {r.user_agent.domain}")
             item = ClickableItem()
-            item.clicked.connect(lambda: self.set_active_user_agent(r.user_agent))
+            item.clicked.connect(lambda: self.setActiveUserAgent(r.user_agent))
             layout = QVBoxLayout()
             layout.addWidget(label)
             item.setLayout(layout)
             self.userAgentsScrollVBox.insertWidget(r.append_index, item, 0, Qt.AlignmentFlag.AlignTop)
             self.userAgents[r.user_agent] = UserAgentWidgetState(widget=item)
             if self.activeUserAgent is None:
-                self.set_active_user_agent(r.user_agent)
+                self.setActiveUserAgent(r.user_agent)
             return
 
         if isinstance(r, AddUAFinishedMessage):
@@ -173,8 +200,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.callGroupBox.setVisible(False)
                 self.callNumberValue.setText("")
 
-    def set_active_user_agent(self, user_agent: UserAgent):
+        if isinstance(r, UserAgentRemoved):
+            if not r.remove_all:
+                return
+            try:
+                ua, state = next(self.userAgentIter)
+                self.userAgentsScrollVBox.removeWidget(state.widget)
+                state.widget.deleteLater()
+                self.requestWorker.emit(RemoveUserAgent(ua, remove_all=True))
+            except StopIteration:
+                self.userAgents.clear()
+                self.userAgentIter = None
+
+    def setActiveUserAgent(self, user_agent: Optional[UserAgent]):
         self.activeUserAgent = user_agent
+        visible = self.activeUserAgent is not None
+
+        self.statusGroupBox.setVisible(visible)
+        self.deleteUAButton.setVisible(visible)
+
+        if user_agent is None:
+            return
+
         self.userAgentUserValue.setText(str(user_agent.user))
         self.userAgentDomainValue.setText(user_agent.domain)
         self.userAgentStatusValue.setText("")
@@ -186,6 +233,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.callNumberValue.setText(state.active_call_number)
         else:
             self.callGroupBox.setVisible(False)
+
+    def findPreviousUserAgent(self, user_agent: UserAgent) -> Optional[UserAgent]:
+        prev = None
+        for ua in self.userAgents.keys():
+            if ua == user_agent:
+                break
+            prev = ua
+        return prev
 
     def closeEvent(self, ev):
         self.workerThread.quit()

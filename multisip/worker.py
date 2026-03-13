@@ -1,6 +1,7 @@
 import logging
 
-from dataclasses import dataclass
+from queue import Queue
+from dataclasses import dataclass, field
 from typing import Optional, Callable
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
@@ -70,6 +71,18 @@ class IncomingCall(WorkerOutputMessage):
     call_number: str
 
 
+@dataclass(frozen=True)
+class RemoveUserAgent(WorkerInputMessage):
+    user_agent: UserAgent
+    remove_all: bool = field(default=False)
+
+
+@dataclass(frozen=True)
+class UserAgentRemoved(WorkerOutputMessage):
+    user_agent: UserAgent
+    remove_all: bool = field(default=False)
+
+
 def handle(event: type):
 
     def handle_decorator(meth):
@@ -124,7 +137,7 @@ class Worker(QObject):
         super().__init__()
 
         self._timer: Optional[QTimer] = None
-        self._message: Optional[WorkerInputMessage] = None
+        self._message_queue: Queue[WorkerInputMessage] = Queue()
 
         self._user_agents: dict[UserAgent, UserAgentState] = {}
         self._user_agents_iter = None
@@ -143,13 +156,14 @@ class Worker(QObject):
             state.baresip.stop()
 
     def poll(self):
-        if self._message:
-            handler = self._handlers[self._message.__class__]
-            message_stream = handler(self._message)
+        if not self._message_queue.empty():
+            message = self._message_queue.get()
+            handler = self._handlers[message.__class__]
+            message_stream = handler(message)
             if message_stream is not None:
                 for message in message_stream:
                     self.sendMessage.emit(message)
-            self._message = None
+            message = None
 
         else:
             if self._user_agents_iter is None:
@@ -166,7 +180,7 @@ class Worker(QObject):
 
     @pyqtSlot(WorkerInputMessage)
     def receive_message(self, message):
-        self._message = message
+        self._message_queue.put(message)
 
     @handle(AddUAsRequest)
     def _handle_add_uas(self, message: AddUAsRequest):
@@ -206,6 +220,14 @@ class Worker(QObject):
     def _handle_hangup(self, message: HangupCall):
         state = self._user_agents[message.user_agent]
         state.baresip.hangup()
+
+    @handle(RemoveUserAgent)
+    def _handle_remove_ua(self, message: RemoveUserAgent):
+        state = self._user_agents[message.user_agent]
+        state.baresip.hangup()
+        state.baresip.stop()
+        del self._user_agents[message.user_agent]
+        yield UserAgentRemoved(message.user_agent, remove_all=message.remove_all)
 
     def add_call(self, ua: UserAgent, uri: str):
         self.sendMessage.emit(IncomingCall(ua, get_number_from_uri(uri)))
