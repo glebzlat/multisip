@@ -58,6 +58,13 @@ class UAChangedStatusMessage(WorkerOutputMessage):
 @dataclass(frozen=True)
 class HangupCall(WorkerInputMessage):
     user_agent: UserAgent
+    hangup_all: bool = field(default=False)
+
+
+@dataclass(frozen=True)
+class UserAgentHungup(WorkerOutputMessage):
+    user_agent: UserAgent
+    hangup_all: bool = field(default=False)
 
 
 @dataclass(frozen=True)
@@ -220,6 +227,7 @@ class Worker(QObject):
     def _handle_hangup(self, message: HangupCall):
         state = self._user_agents[message.user_agent]
         state.baresip.hangup()
+        yield UserAgentHungup(message.user_agent, hangup_all=message.hangup_all)
 
     @handle(RemoveUserAgent)
     def _handle_remove_ua(self, message: RemoveUserAgent):

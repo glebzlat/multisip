@@ -10,7 +10,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
     QSizePolicy,
-    QSpacerItem
+    QSpacerItem,
+    QGroupBox
 )
 from PyQt6.QtGui import QPalette
 
@@ -27,6 +28,7 @@ from ..worker import (
     UAChangedStatusMessage,
     IncomingCall,
     HangupCall,
+    UserAgentHungup,
     SessionTerminated,
     RemoveUserAgent,
     UserAgentRemoved
@@ -38,6 +40,7 @@ from ..config import Config
 @dataclass
 class UserAgentWidgetState:
     widget: QWidget
+    call_actions: QWidget
     active_call_number: Optional[str] = field(default=None, init=False)
 
 
@@ -92,6 +95,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.callGroupBox.setVisible(False)
         self.dialingGroupBox.setVisible(False)
 
+        self.hangupAllButton.clicked.connect(self.handle_hangupAllButton_clicked)
         self.deleteAllButton.clicked.connect(self.handle_deleteAllButton_clicked)
         self.addUserAgentsButton.clicked.connect(self.handle_addUserAgentsButton_clicked)
 
@@ -130,7 +134,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.config = config
 
+    def handle_hangupAllButton_clicked(self):
+        if self.userAgentIter is not None:
+            return
+        if not self.userAgents:
+            return
+        self.userAgentIter = iter(reversed(self.userAgents.items()))
+
+        ua, state = next(self.userAgentIter)
+        self.requestWorker.emit(HangupCall(user_agent=ua, hangup_all=True))
+
     def handle_deleteAllButton_clicked(self):
+        if self.userAgentIter is not None:
+            return
         if not self.userAgents:
             return
         self.userAgentIter = iter(reversed(self.userAgents.items()))
@@ -155,46 +171,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         )
 
     def handle_deleteUAButton_clicked(self):
-        state = self.userAgents[self.activeUserAgent]
-        self.userAgentsScrollVBox.removeWidget(state.widget)
-        state.widget.deleteLater()
-        self.requestWorker.emit(RemoveUserAgent(self.activeUserAgent))
-        del self.userAgents[self.activeUserAgent]
-
-        prevUA = self.findPreviousUserAgent(self.activeUserAgent)
-        self.setActiveUserAgent(prevUA)
+        self.deleteUserAgent(self.activeUserAgent)
 
     def handle_hangupCallButton_clicked(self):
-        self.requestWorker.emit(HangupCall(self.activeUserAgent))
-        self.userAgents[self.activeUserAgent].active_call_number = None
-        self.callGroupBox.setVisible(False)
+        self.hangupCall(self.activeUserAgent)
 
     def handle_worker_sendMessage(self, r: WorkerOutputMessage):
         if isinstance(r, AddUAItemMessage):
-            item = ClickableItem()
-            item.clicked.connect(lambda: self.setActiveUserAgent(r.user_agent))
-            layout = QHBoxLayout()
-            label = QLabel(f"{r.user_agent.user} @ {r.user_agent.domain}")
-            layout.addWidget(label)
-            spacer = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-            layout.addItem(spacer)
-            hangupButton = QPushButton()
-            hangupButton.setIcon(get_icon("hangup"))
-            hangupButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-            layout.addWidget(hangupButton)
-            muteButton = QPushButton()
-            muteButton.setIcon(get_icon("unmuted"))
-            muteButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-            layout.addWidget(muteButton)
-            deleteButton = QPushButton()
-            deleteButton.setIcon(get_icon("cross"))
-            deleteButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-            layout.addWidget(deleteButton)
-            item.setLayout(layout)
-            self.userAgentsScrollVBox.insertWidget(r.append_index, item, 0, Qt.AlignmentFlag.AlignTop)
-            self.userAgents[r.user_agent] = UserAgentWidgetState(widget=item)
-            if self.activeUserAgent is None:
-                self.setActiveUserAgent(r.user_agent)
+            self.addUserAgent(r.user_agent, r.append_index)
             return
 
         if isinstance(r, AddUAFinishedMessage):
@@ -210,13 +194,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.userAgentStatusValue.setText(r.status.name)
 
         if isinstance(r, IncomingCall):
-            self.userAgents[r.user_agent].active_call_number = r.call_number
+            state = self.userAgents[r.user_agent]
+            state.active_call_number = r.call_number
+            state.call_actions.setVisible(True)
             if r.user_agent == self.activeUserAgent:
                 self.callGroupBox.setVisible(True)
                 self.callNumberValue.setText(r.call_number)
 
         if isinstance(r, SessionTerminated):
-            self.userAgents[r.user_agent].active_call_number = None
+            state = self.userAgents[r.user_agent]
+            state.active_call_number = None
+            state.call_actions.setVisible(False)
             if r.user_agent == self.activeUserAgent:
                 self.callGroupBox.setVisible(False)
                 self.callNumberValue.setText("")
@@ -231,6 +219,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.requestWorker.emit(RemoveUserAgent(ua, remove_all=True))
             except StopIteration:
                 self.userAgents.clear()
+                self.userAgentIter = None
+
+        if isinstance(r, UserAgentHungup):
+            if not r.hangup_all:
+                return
+            try:
+                ua, state = next(self.userAgentIter)
+                self.requestWorker.emit(HangupCall(ua, hangup_all=True))
+            except StopIteration:
                 self.userAgentIter = None
 
     def setActiveUserAgent(self, user_agent: Optional[UserAgent]):
@@ -254,6 +251,70 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.callNumberValue.setText(state.active_call_number)
         else:
             self.callGroupBox.setVisible(False)
+
+    def hangupCall(self, ua: UserAgent):
+        self.requestWorker.emit(HangupCall(ua))
+        state = self.userAgents[ua]
+        state.active_call_number = None
+        state.call_actions.setVisible(False)
+        if ua == self.activeUserAgent:
+            self.callGroupBox.setVisible(False)
+
+    def deleteUserAgent(self, ua: UserAgent):
+        state = self.userAgents[ua]
+        self.userAgentsScrollVBox.removeWidget(state.widget)
+        state.widget.deleteLater()
+        self.requestWorker.emit(RemoveUserAgent(self.activeUserAgent))
+        del self.userAgents[ua]
+
+        prev_ua = self.findPreviousUserAgent(ua)
+        self.setActiveUserAgent(prev_ua)
+
+    def addUserAgent(self, user_agent: UserAgent, append_index: int):
+        item = ClickableItem()
+        item.clicked.connect(lambda: self.setActiveUserAgent(user_agent))
+
+        layout = QHBoxLayout()
+        item.setLayout(layout)
+
+        label = QLabel(f"{user_agent.user} @ {user_agent.domain}")
+        layout.addWidget(label)
+
+        spacer = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        layout.addItem(spacer)
+
+        group = QGroupBox()
+        group.setStyleSheet("QGroupBox { border: none; }")
+        group.setVisible(False)
+        group_layout = QHBoxLayout()
+        group_layout.setContentsMargins(0, 0, 0, 0)
+        group.setLayout(group_layout)
+
+        hangupButton = QPushButton()
+        hangupButton.setIcon(get_icon("hangup"))
+        hangupButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        hangupButton.clicked.connect(lambda: self.hangupCall(user_agent))
+        group_layout.addWidget(hangupButton)
+
+        muteButton = QPushButton()
+        muteButton.setIcon(get_icon("unmuted"))
+        muteButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        group_layout.addWidget(muteButton)
+
+        layout.addWidget(group)
+
+        deleteButton = QPushButton()
+        deleteButton.setIcon(get_icon("cross"))
+        deleteButton.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        deleteButton.clicked.connect(lambda: self.deleteUserAgent(user_agent))
+        layout.addWidget(deleteButton)
+
+        self.userAgentsScrollVBox.insertWidget(append_index, item, 0, Qt.AlignmentFlag.AlignTop)
+
+        self.userAgents[user_agent] = UserAgentWidgetState(widget=item, call_actions=group)
+
+        if self.activeUserAgent is None:
+            self.setActiveUserAgent(user_agent)
 
     def findPreviousUserAgent(self, user_agent: UserAgent) -> Optional[UserAgent]:
         prev = None
