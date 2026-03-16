@@ -83,7 +83,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __init__(self, worker, config: Config):
         super().__init__()
+
         self.setupUi(self)
+        self.setWindowTitle("MultiSIP")
 
         self.dialGroupBox.setVisible(False)
         self.incomingCallGroupBox.setVisible(False)
@@ -94,6 +96,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.addUserAgentsButton.clicked.connect(self.handle_addUserAgentsButton_clicked)
 
         self.addUserAgentsForm = AddUserAgents()
+        self.addUserAgentsForm.setWindowTitle("MultiSIP - Add user agents")
         self.addUserAgentsForm.returnData.connect(self.handle_addUserAgentsForm_returnData)
 
         self.userAgentsScrollWidget = QWidget()
