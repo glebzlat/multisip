@@ -119,6 +119,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.requestWorker.connect(self.worker.receive_message)
         self.workerThread.start()
 
+        self.statusGroupBox.setVisible(False)
+        self.deleteUAButton.setVisible(False)
         self.deleteUAButton.clicked.connect(self.handle_deleteUAButton_clicked)
         self.hangupCallButton.clicked.connect(self.handle_hangupCallButton_clicked)
 
