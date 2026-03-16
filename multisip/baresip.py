@@ -261,15 +261,15 @@ class BareSIP:
 
     def _log_error(self, message: str, *args):
         if self._logger.level <= logging.ERROR:
-            self._logger.error(f"{self._pid}: {message}", *args)
+            self._logger.error(f"{self._user_agent.user}:{self._pid}: {message}", *args)
 
     def _log_info(self, message: str, *args):
         if self._logger.level <= logging.INFO:
-            self._logger.info(f"{self._pid}: {message}", *args)
+            self._logger.info(f"{self._user_agent.user}:{self._pid}: {message}", *args)
 
     def _log_debug(self, message: str, *args):
         if self._logger.level <= logging.DEBUG:
-            self._logger.debug(f"{self._pid}: {message}", *args)
+            self._logger.debug(f"{self._user_agent.user}:{self._pid}: {message}", *args)
 
     def handle_ready(self):
         pass
