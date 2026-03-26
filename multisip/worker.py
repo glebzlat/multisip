@@ -192,6 +192,7 @@ class Worker(QObject):
     @handle(AddUAsRequest)
     def _handle_add_uas(self, message: AddUAsRequest):
         prev_len = len(self._user_agents.keys())
+        added_uas_count = 0
 
         for i in range(message.count):
             user = message.start_number + i
@@ -200,6 +201,10 @@ class Worker(QObject):
                 domain=message.domain,
                 password=user_agent_password_from_user(user)
             )
+
+            # Disallow duplicates
+            if ua in self._user_agents:
+                continue
 
             instance = BareSIPHandle(self, ua, log_level=logging.DEBUG)
             status = instance.start()
@@ -212,8 +217,10 @@ class Worker(QObject):
             resp = AddUAItemMessage(
                 user_agent=ua,
                 index=i,
-                append_index=prev_len + i,
+                append_index=prev_len + added_uas_count,
             )
+            added_uas_count += 1
+
             yield resp
 
         yield AddUAFinishedMessage()
