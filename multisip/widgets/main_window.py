@@ -142,7 +142,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.userAgentIter = iter(reversed(self.userAgents.items()))
 
         ua, state = next(self.userAgentIter)
-        self.requestWorker.emit(HangupCall(user_agent=ua, hangup_all=True))
+        self.hangupCall(ua, hangup_all=True)
 
     def handle_deleteAllButton_clicked(self):
         if self.userAgentIter is not None:
@@ -226,7 +226,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 return
             try:
                 ua, state = next(self.userAgentIter)
-                self.requestWorker.emit(HangupCall(ua, hangup_all=True))
+                self.hangupCall(ua, hangup_all=True)
             except StopIteration:
                 self.userAgentIter = None
 
@@ -252,8 +252,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.callGroupBox.setVisible(False)
 
-    def hangupCall(self, ua: UserAgent):
-        self.requestWorker.emit(HangupCall(ua))
+    def hangupCall(self, ua: UserAgent, hangup_all=False):
+        self.requestWorker.emit(HangupCall(ua, hangup_all=hangup_all))
         state = self.userAgents[ua]
         state.active_call_number = None
         state.call_actions.setVisible(False)
