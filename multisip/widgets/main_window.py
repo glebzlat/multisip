@@ -159,7 +159,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setActiveUserAgent(None)
 
     def handle_addUserAgentsButton_clicked(self):
-        self.addUserAgentsForm.show()
+        self.addUserAgentsForm.showClean()
 
     def handle_addUserAgentsForm_returnData(self, start_account: int, count: int):
         self.requestWorker.emit(

@@ -28,3 +28,11 @@ class AddUserAgents(QWidget, Ui_Form):
 
     def handle_cancelButton_clicked(self):
         self.close()
+
+    def clear(self):
+        self.startNumberInput.clear()
+        self.countValue.setValue(1)
+
+    def showClean(self):
+        self.clear()
+        self.show()
