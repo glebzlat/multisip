@@ -284,6 +284,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         layout.addItem(spacer)
 
         group = QGroupBox()
+        group.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         group.setStyleSheet("QGroupBox { border: none; }")
         group.setVisible(False)
         group_layout = QHBoxLayout()
