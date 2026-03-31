@@ -1,9 +1,6 @@
-from pathlib import Path
-
 from PyQt6.QtGui import QIcon
 
-_module_path = Path(__file__).absolute()
-_resources_dir = _module_path.parent / "resources" / "icons"
+from .common import ICONS_DIR
 
 
 class IconNotFound(Exception):
@@ -11,7 +8,7 @@ class IconNotFound(Exception):
 
 
 def get_icon(name: str) -> QIcon:
-    icon_path = _resources_dir / f"{name}.svg"
+    icon_path = ICONS_DIR / f"{name}.svg"
     if not icon_path.exists():
         raise IconNotFound(f"Icon {name} not found")
     return QIcon(str(icon_path))
