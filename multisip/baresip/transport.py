@@ -3,18 +3,18 @@ import uuid
 
 from typing import Any, Optional
 
-from PyQt6.QtCore import QObject, pyqtSignal
-from PyQt6.QtNetwork import QAbstractSocket, QTcpSocket
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 
 
 class CtrlTcpTransport(QObject):
 
-    connectedChanged = pyqtSignal(bool)
-    responseReceived = pyqtSignal(dict)
-    eventReceived = pyqtSignal(dict)
-    messageReceived = pyqtSignal(dict)
-    protocolError = pyqtSignal(str)
-    socketError = pyqtSignal(str)
+    connectedChanged = Signal(bool)
+    responseReceived = Signal(dict)
+    eventReceived = Signal(dict)
+    messageReceived = Signal(dict)
+    protocolError = Signal(str)
+    socketError = Signal(str)
 
     def __init__(self, host: str, port: int, parent: Optional[QObject] = None):
         super().__init__(parent)

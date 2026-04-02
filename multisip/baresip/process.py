@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from PyQt6.QtCore import QObject, QProcess, pyqtSignal
+from PySide6.QtCore import QObject, QProcess, Signal
 
 
 class ProcessManager(QObject):
 
     # Lifecycle
-    started = pyqtSignal(int)  # pid
-    finished = pyqtSignal(int, QProcess.ExitStatus)
-    errorOccurred = pyqtSignal(str)
+    started = Signal(int)  # pid
+    finished = Signal(int, QProcess.ExitStatus)
+    errorOccurred = Signal(str)
 
     # State
-    runningChanged = pyqtSignal(bool)
+    runningChanged = Signal(bool)
 
     def __init__(
         self,

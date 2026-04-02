@@ -1,7 +1,9 @@
 import sys
 import logging
 
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
+
+import multisip.resources
 
 from .widgets.main_window import MainWindow
 from .worker import Worker

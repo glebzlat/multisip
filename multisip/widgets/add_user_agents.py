@@ -1,13 +1,13 @@
-from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import pyqtSignal, QRegularExpression
-from PyQt6.QtGui import QRegularExpressionValidator
+from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Signal, QRegularExpression
+from PySide6.QtGui import QRegularExpressionValidator
 
 from ..ui.add_user_agents import Ui_Form
 
 
 class AddUserAgents(QWidget, Ui_Form):
 
-    returnData = pyqtSignal(int, int)
+    returnData = Signal(int, int)
 
     def __init__(self):
         super().__init__()

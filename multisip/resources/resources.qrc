@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/cross.svg</file>
+        <file>icons/hangup.svg</file>
+        <file>icons/muted.svg</file>
+        <file>icons/unmuted.svg</file>
+        <file>baresip.conf</file>
+    </qresource>
+</RCC>

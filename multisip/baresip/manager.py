@@ -4,7 +4,7 @@ from typing import Any, Optional, Dict
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 from .protocol import CtrlTcpProtocol
 from ..user_agent import UserAgent
@@ -43,29 +43,29 @@ class CtrlTcpManager(QObject):
         last_event: Optional[str] = None
 
     # Raw correlated lifecycle
-    requestSent = pyqtSignal(object)                  # PendingRequest
-    requestFinished = pyqtSignal(object, dict)       # PendingRequest, response
-    requestTimedOut = pyqtSignal(object)             # PendingRequest
-    unknownResponse = pyqtSignal(dict)
+    requestSent = Signal(object)                  # PendingRequest
+    requestFinished = Signal(object, dict)       # PendingRequest, response
+    requestTimedOut = Signal(object)             # PendingRequest
+    unknownResponse = Signal(dict)
 
     # UA lifecycle
-    userAgentAdded = pyqtSignal(object)              # UserAgent
-    userAgentRemoved = pyqtSignal(object)            # UserAgent
-    userAgentCreated = pyqtSignal(object, dict)      # UserAgent, response
-    userAgentDeleted = pyqtSignal(object, dict)      # UserAgent, response
-    userAgentRegistrationChanged = pyqtSignal(object, bool, str)  # UserAgent, registered, event_type
+    userAgentAdded = Signal(object)              # UserAgent
+    userAgentRemoved = Signal(object)            # UserAgent
+    userAgentCreated = Signal(object, dict)      # UserAgent, response
+    userAgentDeleted = Signal(object, dict)      # UserAgent, response
+    userAgentRegistrationChanged = Signal(object, bool, str)  # UserAgent, registered, event_type
 
     # Call events
-    incomingCall = pyqtSignal(object, str, str)      # UserAgent, call_id, peer_uri
-    callEstablished = pyqtSignal(object, str, str)   # UserAgent, call_id, peer_uri
-    callClosed = pyqtSignal(object, str, str)        # UserAgent, call_id, reason
+    incomingCall = Signal(object, str, str)      # UserAgent, call_id, peer_uri
+    callEstablished = Signal(object, str, str)   # UserAgent, call_id, peer_uri
+    callClosed = Signal(object, str, str)        # UserAgent, call_id, reason
 
     # Raw protocol passthrough
-    eventReceived = pyqtSignal(dict)
-    messageReceived = pyqtSignal(dict)
+    eventReceived = Signal(dict)
+    messageReceived = Signal(dict)
 
     # Errors
-    managerError = pyqtSignal(str)
+    managerError = Signal(str)
 
     def __init__(self, protocol: CtrlTcpProtocol, parent: Optional[QObject] = None):
         super().__init__(parent)

@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject
+from PySide6.QtCore import QObject
 
 from .baresip import Transport, Protocol, Manager, Config, Process
 

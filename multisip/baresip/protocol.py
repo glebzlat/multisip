@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 from .transport import CtrlTcpTransport
 
 
 class CtrlTcpProtocol(QObject):
 
-    responseReceived = pyqtSignal(dict)
-    eventReceived = pyqtSignal(dict)
-    messageReceived = pyqtSignal(dict)
+    responseReceived = Signal(dict)
+    eventReceived = Signal(dict)
+    messageReceived = Signal(dict)
 
     def __init__(self, transport: CtrlTcpTransport, parent: Optional[QObject] = None):
         super().__init__(parent)
