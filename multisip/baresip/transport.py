@@ -94,7 +94,7 @@ class CtrlTcpTransport(QObject):
             return None
 
         len_bytes = self._buffer[:colon]
-        if not len_bytes or any(b < b"0" or b > b"9" for b in len_bytes):
+        if not len_bytes or any(b < ord("0") or b > ord("9") for b in len_bytes):
             self.protocolError.emit("invalid netstring length prefix")
             self._buffer.clear()
             return None
