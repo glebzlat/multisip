@@ -114,6 +114,7 @@ class CtrlTcpManager(QObject):
 
     def create_user_agent(self, ua: UserAgent) -> None:
         state = self._user_agents.get(ua)
+        acc_line = self._account_line_of(ua)
         if state is None:
             raise ValueError(f"user agent not added: {ua}")
         token = self._make_token(ua)
@@ -121,10 +122,10 @@ class CtrlTcpManager(QObject):
             token=token,
             operation=Operation.CREATE_UA,
             ua=ua,
-            params=state.aor
+            params=acc_line
         )
         self._pending_requests[token] = rq
-        self._p.uanew(state.aor, token)
+        self._p.uanew(acc_line, token)
         self.requestSent.emit(rq)
 
     def delete_user_agent(self, ua: UserAgent) -> None:
