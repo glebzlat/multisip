@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, Signal
 
 from .protocol import CtrlTcpProtocol
 from ..user_agent import UserAgent
+from ..log import get_logger
 
 
 class Operation(StrEnum):
@@ -35,6 +36,7 @@ class CtrlTcpManager(QObject):
 
     @dataclass
     class UserAgentState:
+        ua: UserAgent
         aor: str
         created: bool = False
         registered: bool = False
@@ -43,7 +45,7 @@ class CtrlTcpManager(QObject):
         last_event: Optional[str] = None
 
     # Raw correlated lifecycle
-    requestSent = Signal(object)                  # PendingRequest
+    requestSent = Signal(object)                 # PendingRequest
     requestFinished = Signal(object, dict)       # PendingRequest, response
     requestTimedOut = Signal(object)             # PendingRequest
     unknownResponse = Signal(dict)
@@ -78,6 +80,8 @@ class CtrlTcpManager(QObject):
         self._p.responseReceived.connect(self._on_response)
         self._p.eventReceived.connect(self._on_event)
         self._p.messageReceived.connect(self._on_message)
+
+        self._log = get_logger(self.__class__.__name__)
 
     def user_agents(self) -> list[UserAgent]:
         return [ua for ua in self._user_agents.keys()]
@@ -301,6 +305,8 @@ class CtrlTcpManager(QObject):
                 self._update_reginfo(data)
 
     def _on_event(self, event: dict) -> None:
+        self._log.debug("event received: %s", event)
+
         self.eventReceived.emit(event)
 
         aor_value = event.get("accountaor")
@@ -342,6 +348,7 @@ class CtrlTcpManager(QObject):
             return
 
     def _on_message(self, message: dict):
+        self._log.debug("message received: %s", message)
         self.messageReceived.emit(message)
 
     def _apply_registration_event(self, state: UserAgentState, event_type: str) -> None:

@@ -3,20 +3,22 @@ from typing import Optional
 from PySide6.QtWidgets import QWidget, QSizePolicy
 from PySide6.QtCore import Signal
 
+from ..user_agent import UserAgent
 from ..ui.user_agent import Ui_UserAgent
 
 
-class UserAgent(QWidget, Ui_UserAgent):
+class UserAgentWidget(QWidget, Ui_UserAgent):
 
     muteButtonClicked = Signal()
     hangupButtonClicked = Signal()
     deleteButtonClicked = Signal()
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, ua: UserAgent, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setupUi(self)
         self._connect_signals()
         self._apply_styling()
+        self.uaAORValue.setText(f"{ua.user}@{ua.domain}")
 
     def _connect_signals(self):
         self.uaHangupButton.clicked.connect(self.hangupButtonClicked)

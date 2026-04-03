@@ -1,3 +1,5 @@
+from typing import Optional
+
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Signal, QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator
@@ -9,8 +11,8 @@ class AddUserAgents(QWidget, Ui_Form):
 
     returnData = Signal(int, int)
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
         self.setupUi(self)
 
         self.int_re = QRegularExpression(r"[0-9]+")
