@@ -90,7 +90,7 @@ class CtrlTcpManager(QObject):
 
     def add_user_agent(self, user: int, password: str, domain: str) -> Optional[UserAgent]:
         ua = UserAgent(user=user, password=password, domain=domain)
-        aor = ua.to_aor()
+        aor = self._aor_of(ua)
         if aor in self._user_agents:
             self.managerError.emit(f"user agent already added: {aor}")
             return None
