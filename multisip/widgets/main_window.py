@@ -21,7 +21,7 @@ from ..user_agent import UserAgent, Status as UserAgentStatus
 from ..ui.main_window import Ui_MainWindow
 from ..worker import Worker
 from ..config import Config
-from ..baresip import Event
+from ..baresip import Event, Operation as ProtocolOperation
 
 
 @dataclass
@@ -96,7 +96,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _connect_signals(self):
         self.addUserAgentsButton.clicked.connect(self._handle_add_uas)
 
-        self.hangupCallButton.clicked.connect(self._handle_hangup_call)
+        self.hangupCallButton.clicked.connect(self._handle_hangup_call_btn_clicked)
 
     def _setup_widgets(self):
         self.uaScroll = QWidget(self)
@@ -108,8 +108,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._set_active_ua(None)
 
     def _setup_worker(self):
-        self._worker.manager.incomingCall.connect(self._handle_incoming_call, type=Qt.ConnectionType.QueuedConnection)
+        self._worker.manager.callEstablished.connect(self._handle_incoming_call, type=Qt.ConnectionType.QueuedConnection)
         self._worker.manager.callClosed.connect(self._handle_call_closed, type=Qt.ConnectionType.QueuedConnection)
+        self._worker.manager.userAgentRegistrationChanged.connect(self._handle_reg_changed)
+        self._worker.manager.transactionCompletedSimple.connect(self._handle_transaction_completed, type=Qt.ConnectionType.QueuedConnection)
 
         self.hangupCall.connect(self._worker.handle_hangup_call, type=Qt.ConnectionType.QueuedConnection)
 
@@ -167,8 +169,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if ua == self._active_ua:
             self.callGroupBox.setVisible(False)
 
-    def _handle_hangup_call(self):
+    def _handle_reg_changed(self, ua: UserAgent, status: UserAgentStatus):
+        state = self._ua_states.get(ua)
+        if state is None:
+            # "Pending" register event comes before the UA is registered
+            # and added to the _ua_states.
+            return
+
+        state.status = status
+
+        if ua == self._active_ua:
+            self.userAgentStatusValue.setText(state.status.name)
+
+    def _handle_hangup_call_btn_clicked(self):
         self._hangup_call(self._active_ua)
+
+    def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent):
+        if op == ProtocolOperation.HANGUP:
+            self._hangup_call(ua)
 
     def _set_active_ua(self, ua: Optional[UserAgent]) -> None:
         self._active_ua = ua
@@ -183,7 +201,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         state = self._ua_states[ua]
 
-        self.userAgentStatusValue.setText(state.status.value)
+        self.userAgentStatusValue.setText(state.status.name)
         self.userAgentUserValue.setText(str(ua.user))
         self.userAgentDomainValue.setText(ua.domain)
 
