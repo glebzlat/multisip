@@ -39,6 +39,9 @@ class CtrlTcpProtocol(QObject):
     def mute(self, arg: Optional[str] = None, token: Optional[str] = None) -> str:
         return self.send("mute", arg, token)
 
+    def accept(self, arg: Optional[str] = None, token: Optional[str] = None) -> str:
+        return self.send("accept", arg, token)
+
     def resume(self, arg: Optional[str] = None, token: Optional[str] = None) -> str:
         return self.send("resume", arg, token)
 

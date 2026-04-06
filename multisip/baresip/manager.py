@@ -18,10 +18,21 @@ class Operation(StrEnum):
     DIAL = "dial"
     MUTE = "mute"
     RESUME = "resume"
+    ACCEPT = "accept"
     HANGUP = "hangup"
     HANGUP_ALL = "hangup_all"
     CALLSTAT = "callstat"
     CALLFIND = "callfind"
+
+
+@dataclass(slots=True, frozen=True)
+class Event:
+    type: Optional[str]
+    aor: Optional[str]
+    call_id: Optional[str]
+    peer_uri: Optional[str]
+    param: Optional[str]
+    user: Optional[str]
 
 
 class CtrlTcpManager(QObject):
@@ -58,9 +69,9 @@ class CtrlTcpManager(QObject):
     userAgentRegistrationChanged = Signal(object, bool, str)  # UserAgent, registered, event_type
 
     # Call events
-    incomingCall = Signal(object, str, str)      # UserAgent, call_id, peer_uri
-    callEstablished = Signal(object, str, str)   # UserAgent, call_id, peer_uri
-    callClosed = Signal(object, str, str)        # UserAgent, call_id, reason
+    incomingCall = Signal(UserAgent, Event)
+    callEstablished = Signal(UserAgent, Event)
+    callClosed = Signal(UserAgent, Event)
 
     # Raw protocol passthrough
     eventReceived = Signal(dict)
@@ -76,6 +87,7 @@ class CtrlTcpManager(QObject):
         self._pending_requests: dict[str, CtrlTcpManager.PendingRequest] = {}
         self._sequence_by_aor: dict[str, int] = {}
         self._user_agents: dict[UserAgent, CtrlTcpManager.UserAgentState] = {}
+        self._ua_by_aor: dict[str, CtrlTcpManager.UserAgentState] = {}
 
         self._p.responseReceived.connect(self._on_response)
         self._p.eventReceived.connect(self._on_event)
@@ -98,7 +110,9 @@ class CtrlTcpManager(QObject):
         if aor in self._user_agents:
             self.managerError.emit(f"user agent already added: {aor}")
             return None
-        self._user_agents[ua] = self.UserAgentState(ua=ua, aor=aor)
+        state = self.UserAgentState(ua=ua, aor=aor)
+        self._user_agents[ua] = state
+        self._ua_by_aor[aor] = state
         self.userAgentAdded.emit(ua)
         return ua
 
@@ -110,9 +124,10 @@ class CtrlTcpManager(QObject):
         if state.created:
             self.managerError.emit(f"user agent still exists in baresip: {ua}")
             return False
+        state = self._user_agents[ua]
         del self._user_agents[ua]
-        aor = self._aor_of(ua)
-        self._sequence_by_aor.pop(aor, None)
+        del self._ua_by_aor[state.aor]
+        self._sequence_by_aor.pop(state.aor, None)
         self.userAgentRemoved.emit(ua)
         return True
 
@@ -202,7 +217,7 @@ class CtrlTcpManager(QObject):
         state = self._user_agents.get(ua)
         if state is None:
             raise ValueError(f"user agent not added: {ua}")
-        if state.current_call_line is not None:
+        if state.current_call_id is not None:
             return
         token = self._make_token(ua)
         rq = self.PendingRequest(
@@ -211,11 +226,12 @@ class CtrlTcpManager(QObject):
             ua=ua
         )
         self._pending_requests[token] = rq
-        self._p.accept(token)
-        self.requestSent(rq)
+        self._p.accept(None, token)
+        self.requestSent.emit(rq)
 
     def hangup(self, ua: UserAgent) -> None:
         state = self._user_agents.get(ua)
+        print("hangup", state)
         if state is None:
             raise ValueError(f"user agent not added: {ua}")
         if state.current_call_line is None:
@@ -309,47 +325,49 @@ class CtrlTcpManager(QObject):
 
         self.eventReceived.emit(event)
 
-        aor_value = event.get("accountaor")
-        event_type_value = event.get("type")
-        call_id_value = event.get("id")
-        peer_uri_value = event.get("peeruri")
-        param_value = event.get("param")
+        ev = Event(
+            type=event.get("type"),
+            aor=event.get("accountaor"),
+            call_id=event.get("id"),
+            peer_uri=event.get("peeruri"),
+            param=event.get("param"),
+            user=event.get("cuser")
+        )
 
-        aor = str(aor_value) if aor_value is not None else ""
-        event_type = str(event_type_value) if event_type_value is not None else ""
-        call_id = str(call_id_value) if call_id_value is not None else ""
-        peer_uri = str(peer_uri_value) if peer_uri_value is not None else ""
-        param = str(param_value) if param_value is not None else ""
-
-        state = self._user_agents.get(aor)
+        state = self._ua_by_aor.get(ev.aor)
         if state is None:
             return
 
-        if event_type in {
+        if ev.type in {
             "REGISTERING",
             "REGISTER_OK",
             "REGISTER_FAIL",
             "UNREGISTERING",
             "UNREGISTER_OK",
         }:
-            self._apply_registration_event(state, event_type)
+            self._apply_registration_event(state, ev.type)
             return
 
-        if event_type == "CALL_INCOMING":
-            self.incomingCall.emit(state.ua, call_id, peer_uri)
+        if ev.type == "CALL_INCOMING":
+            self.incomingCall.emit(state.ua, ev)
             return
 
-        if event_type == "CALL_ESTABLISHED":
-            self.callEstablished.emit(state.ua, call_id, peer_uri)
+        if ev.type == "CALL_ESTABLISHED":
+            state.current_call_id = ev.call_id
+            self.callEstablished.emit(state.ua, ev)
             return
 
-        if event_type == "CALL_CLOSED":
-            self.callClosed.emit(state.ua, call_id, param)
+        if ev.type == "CALL_CLOSED":
+            state.current_call_id = None
+            self.callClosed.emit(state.ua, ev)
             return
 
     def _on_message(self, message: dict):
         self._log.debug("message received: %s", message)
         self.messageReceived.emit(message)
+
+    def _on_request_sent(self, rq: CtrlTcpManager.PendingRequest):
+        self._log.debug("request sent: %s", rq)
 
     def _apply_registration_event(self, state: UserAgentState, event_type: str) -> None:
         registered = state.registered

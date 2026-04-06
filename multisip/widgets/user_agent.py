@@ -9,24 +9,38 @@ from ..ui.user_agent import Ui_UserAgent
 
 class UserAgentWidget(QWidget, Ui_UserAgent):
 
-    muteButtonClicked = Signal()
-    hangupButtonClicked = Signal()
-    deleteButtonClicked = Signal()
+    muteButtonClicked = Signal(UserAgent)
+    hangupButtonClicked = Signal(UserAgent)
+    deleteButtonClicked = Signal(UserAgent)
 
     def __init__(self, ua: UserAgent, parent: Optional[QWidget] = None):
         super().__init__(parent)
+        self._ua = ua
         self.setupUi(self)
         self._connect_signals()
         self._apply_styling()
         self.uaAORValue.setText(f"{ua.user}@{ua.domain}")
+        self.setActiveCall(False)
 
     def _connect_signals(self):
-        self.uaHangupButton.clicked.connect(self.hangupButtonClicked)
-        self.uaMuteButton.clicked.connect(self.muteButtonClicked)
-        self.uaDeleteButton.clicked.connect(self.deleteButtonClicked)
+        self.uaHangupButton.clicked.connect(self._handle_hangup_button_clicked)
+        self.uaMuteButton.clicked.connect(self._handle_mute_button_clicked)
+        self.uaDeleteButton.clicked.connect(self._handle_delete_button_clicked)
 
     def _apply_styling(self):
         self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
 
         self.uaActionsGroup.setStyleSheet("QGroupBox { border: none; }")
         self.uaActionsGroup.setContentsMargins(0, 0, 0, 0)
+
+    def setActiveCall(self, value: bool):
+        self.uaActionsGroup.setVisible(value)
+
+    def _handle_hangup_button_clicked(self):
+        self.hangupButtonClicked.emit(self._ua)
+
+    def _handle_mute_button_clicked(self):
+        self.muteButtonClicked.emit(self._ua)
+
+    def _handle_delete_button_clicked(self):
+        self.deleteButtonClicked.emit(self._ua)
