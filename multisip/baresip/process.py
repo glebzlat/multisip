@@ -91,6 +91,9 @@ class ProcessManager(QObject):
 
         self.finished.connect(_restart)
 
+    def waitForFinished(self, msecs: int) -> bool:
+        return self._process.waitForFinished(msecs)
+
     def _on_started(self) -> None:
         self._running = True
         self.runningChanged.emit(True)
