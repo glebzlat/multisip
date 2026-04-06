@@ -63,11 +63,11 @@ class Worker(QObject):
         self.userAgentAdded.emit(ua, self._ua_indexes[ua])
 
     def _handle_incoming_call(self, ua: UserAgent, ev: Event):
-        self._log.info("incoming call: to %d from %s %s", ua.user, ev.user, ev.peer_uri)
+        self._log.info("incoming call: to %d from %s", ua.user, ev.contact_uri)
         self.manager.accept(ua)
 
     def _handle_call_closed(self, ua: UserAgent, ev: Event):
-        self._log.info("call closed: to %d from %s %s", ua.user, ev.user, ev.peer_uri)
+        self._log.info("call closed: to %d from %s", ua.user, ev.contact_uri)
 
     @Slot()
     def stop(self):
