@@ -49,7 +49,6 @@ class ProcessManager(QObject):
         proc = QProcess(self)
         proc.setProgram(self._program)
         proc.setArguments(self._arguments)
-        print(self._program, self._arguments)
 
         # Important: merged output simplifies debugging/logging
         proc.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
