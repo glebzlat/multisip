@@ -70,6 +70,10 @@ class ClickableItem(QWidget):
 class MainWindow(QMainWindow, Ui_MainWindow):
 
     addUserAgents = Signal(int, int)  # start_account, count
+    deleteAll = Signal()
+    hangupAll = Signal()
+
+    deleteUA = Signal(UserAgent)
     hangupCall = Signal(UserAgent)
 
     setLogLevel = Signal(int)
@@ -95,7 +99,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _connect_signals(self):
         self.addUserAgentsButton.clicked.connect(self._handle_add_uas)
+        self.deleteAllButton.clicked.connect(self._handle_delete_all)
+        self.hangupAllButton.clicked.connect(self._handle_hangup_all)
 
+        self.deleteUAButton.clicked.connect(self._handle_delete_ua)
         self.hangupCallButton.clicked.connect(self._handle_hangup_call_btn_clicked)
 
     def _setup_widgets(self):
@@ -112,7 +119,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._worker.manager.callClosed.connect(self._handle_call_closed, type=Qt.ConnectionType.QueuedConnection)
         self._worker.manager.userAgentRegistrationChanged.connect(self._handle_reg_changed)
         self._worker.manager.transactionCompletedSimple.connect(self._handle_transaction_completed, type=Qt.ConnectionType.QueuedConnection)
+        self._worker.manager.userAgentRemoved.connect(self._handle_ua_removed, type=Qt.ConnectionType.QueuedConnection)
 
+        self.deleteAll.connect(self._worker.handle_delete_all, type=Qt.ConnectionType.QueuedConnection)
+        self.hangupAll.connect(self._worker.handle_hangup_all, type=Qt.ConnectionType.QueuedConnection)
+
+        self.deleteUA.connect(self._worker.handle_delete_ua, type=Qt.ConnectionType.QueuedConnection)
         self.hangupCall.connect(self._worker.handle_hangup_call, type=Qt.ConnectionType.QueuedConnection)
 
         self._worker_thread = QThread()
@@ -123,6 +135,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _handle_add_uas(self):
         self._add_uas_window.showClean()
+
+    def _handle_delete_all(self):
+        self.deleteAll.emit()
+
+    def _handle_hangup_all(self):
+        self.hangupAll.emit()
 
     def _handle_add_uas_data(self, start_account: int, count: int):
         self.addUserAgents.emit(start_account, count)
@@ -181,12 +199,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if ua == self._active_ua:
             self.userAgentStatusValue.setText(state.status.name)
 
+    def _handle_delete_ua(self):
+        self.deleteUA.emit(self._active_ua)
+
     def _handle_hangup_call_btn_clicked(self):
         self._hangup_call(self._active_ua)
 
     def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent):
         if op == ProtocolOperation.HANGUP:
             self._hangup_call(ua)
+
+    def _handle_ua_removed(self, ua: UserAgent):
+        state = self._ua_states.pop(ua)
+        state.list_item.deleteLater()
+        if ua == self._active_ua:
+            self._set_active_ua(None)
 
     def _set_active_ua(self, ua: Optional[UserAgent]) -> None:
         self._active_ua = ua

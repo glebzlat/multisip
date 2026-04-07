@@ -3,7 +3,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal, Slot
 
 from .baresip import Transport, Protocol, Manager, create_config, Process, Event
-from .user_agent import UserAgent, user_agent_password_from_user
+from .user_agent import UserAgent, Status as RegStatus, user_agent_password_from_user
 from .config import Config
 from .log import get_logger
 
@@ -11,6 +11,7 @@ from .log import get_logger
 class Worker(QObject):
 
     userAgentAdded = Signal(UserAgent, int)  # ua, index
+    userAgentDeleted = Signal(UserAgent)
 
     def __init__(self, config: Config, tmpdir: Path):
         super().__init__()
@@ -40,6 +41,7 @@ class Worker(QObject):
         self.manager.userAgentCreated.connect(self._handle_ua_added)
         self.manager.incomingCall.connect(self._handle_incoming_call)
         self.manager.callClosed.connect(self._handle_call_closed)
+        self.manager.userAgentDeleted.connect(self._handle_ua_deleted)
 
     def add_uas(self, start_account_number: int, count: int) -> None:
         prev_uas_count = len(self.manager.user_agents())
@@ -56,6 +58,16 @@ class Worker(QObject):
             self._ua_indexes[ua] = prev_uas_count + added_uas_count
             added_uas_count += 1
 
+    def handle_delete_all(self):
+        for ua in reversed(self.manager.user_agents()):
+            self.manager.delete_user_agent(ua)
+
+    def handle_hangup_all(self):
+        self.manager.hangup_all()
+
+    def handle_delete_ua(self, ua: UserAgent):
+        self.manager.delete_user_agent(ua)
+
     def handle_hangup_call(self, ua: UserAgent):
         self.manager.hangup(ua)
 
@@ -68,6 +80,9 @@ class Worker(QObject):
 
     def _handle_call_closed(self, ua: UserAgent, ev: Event):
         self._log.info("call closed: to %d from %s", ua.user, ev.contact_uri)
+
+    def _handle_ua_deleted(self, ua: UserAgent):
+        self.manager.remove_user_agent(ua)
 
     @Slot()
     def stop(self):
