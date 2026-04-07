@@ -139,6 +139,7 @@ class CtrlTcpManager(QObject):
         self._p.eventReceived.connect(self._on_event)
         self._p.messageReceived.connect(self._on_message)
 
+        self.managerError.connect(self._on_error)
         self.requestSent.connect(self._on_request_sent)
 
         self._log = get_logger(self.__class__.__name__)
@@ -578,6 +579,9 @@ class CtrlTcpManager(QObject):
     def _on_message(self, message: dict) -> None:
         self._log.debug("message received: %s", message)
         self.messageReceived.emit(message)
+
+    def _on_error(self, msg: str) -> None:
+        self._log.error("error: %s", msg)
 
     def _on_request_sent(self, rq: PendingRequest) -> None:
         if self._log.isEnabledFor(logging.DEBUG):
