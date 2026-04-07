@@ -158,6 +158,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         user_agent = UserAgentWidget(ua, self)
         user_agent.hangupButtonClicked.connect(self._hangup_call)
+        user_agent.deleteButtonClicked.connect(self.deleteUA)
         layout.addWidget(user_agent)
 
         self.uaScrollLayout.insertWidget(at_index, item)

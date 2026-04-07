@@ -34,7 +34,8 @@ class UserAgentWidget(QWidget, Ui_UserAgent):
         self.uaActionsGroup.setContentsMargins(0, 0, 0, 0)
 
     def setActiveCall(self, value: bool):
-        self.uaActionsGroup.setVisible(value)
+        self.uaHangupButton.setVisible(value)
+        self.uaMuteButton.setVisible(value)
 
     def _handle_hangup_button_clicked(self):
         self.hangupButtonClicked.emit(self._ua)
