@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import dataclasses
+
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -577,7 +580,10 @@ class CtrlTcpManager(QObject):
         self.messageReceived.emit(message)
 
     def _on_request_sent(self, rq: PendingRequest) -> None:
-        self._log.debug("request sent: %s", rq)
+        if self._log.isEnabledFor(logging.DEBUG):
+            data = dataclasses.asdict(rq)
+            data["operation"] = rq.operation.value
+            self._log.debug("request sent: %s", data)
 
     # -------------------------------------------------------------------------
     # Registration state helpers
