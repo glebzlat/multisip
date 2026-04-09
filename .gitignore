@@ -215,4 +215,5 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-multisip/main_window.py
+commit.msg
+.codex
