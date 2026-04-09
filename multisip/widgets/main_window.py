@@ -26,6 +26,7 @@ from ..ui.main_window import Ui_MainWindow
 from ..worker import Worker
 from ..config import Config
 from ..baresip import Event, Operation as ProtocolOperation
+from ..log import get_logger
 
 
 @dataclass
@@ -34,6 +35,7 @@ class UserAgentState:
     widget: UserAgentWidget
     status: UserAgentStatus = UserAgentStatus.PENDING
     active_call_id: Optional[str] = None
+    muted: bool = True
 
 
 class ClickableItem(QWidget):
@@ -76,9 +78,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     addUserAgents = Signal(int, int)  # start_account, count
     deleteAll = Signal()
     hangupAll = Signal()
+    muteAll = Signal()
 
     deleteUA = Signal(UserAgent)
     hangupCall = Signal(UserAgent)
+    setMuteUA = Signal(UserAgent, bool)
 
     setLogLevel = Signal(int)
     clearLogs = Signal()
@@ -90,6 +94,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setWindowTitle("MultiSIP")
 
         self._config = config
+
+        self._log = get_logger(self.__class__.__name__)
 
         self._setup_widgets()
         self._connect_signals()
@@ -103,6 +109,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self._active_ua: Optional[UserAgent] = None
         self._ua_states: dict[UserAgent, UserAgentState] = {}
+        self._unmuted_ua: Optional[UserAgent] = None
 
         self._log_handler = log_handler
         self._n_log_lines = 0
@@ -110,12 +117,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.logLevelSelector.setCurrentText(self._config.log_level.name)
         self.displayLevelSelector.setCurrentText(self._config.log_level.name)
 
+        self._fill_log_window(logging.WARNING)
+
     def _connect_signals(self):
         self.addUserAgentsButton.clicked.connect(self._handle_add_uas)
         self.deleteAllButton.clicked.connect(self._handle_delete_all)
         self.hangupAllButton.clicked.connect(self._handle_hangup_all)
+        self.muteAllButton.clicked.connect(self._handle_mute_all)
 
         self.deleteUAButton.clicked.connect(self._handle_delete_ua)
+        self.muteUAButton.clicked.connect(self._handle_mute_active_ua)
         self.hangupCallButton.clicked.connect(self._handle_hangup_call_btn_clicked)
 
         self.logLevelSelector.activated.connect(self._handle_set_log_level)
@@ -147,14 +158,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.deleteAll.connect(self._worker.handle_delete_all, type=Qt.ConnectionType.QueuedConnection)
         self.hangupAll.connect(self._worker.handle_hangup_all, type=Qt.ConnectionType.QueuedConnection)
+        self.muteAll.connect(self._worker.handle_mute_all, type=Qt.ConnectionType.QueuedConnection)
 
         self.deleteUA.connect(self._worker.handle_delete_ua, type=Qt.ConnectionType.QueuedConnection)
         self.hangupCall.connect(self._worker.handle_hangup_call, type=Qt.ConnectionType.QueuedConnection)
+        self.setMuteUA.connect(self._worker.handle_set_mute, type=Qt.ConnectionType.QueuedConnection)
 
         self._worker_thread = QThread()
         self._worker.moveToThread(self._worker_thread)
         self.addUserAgents.connect(self._worker.add_uas, type=Qt.ConnectionType.QueuedConnection)
         self._worker.userAgentAdded.connect(self._handle_ua_added, type=Qt.ConnectionType.QueuedConnection)
+        self._worker.muteStateChanged.connect(self._handle_mute_state_changed, type=Qt.ConnectionType.QueuedConnection)
         self._worker_thread.start()
 
     def _handle_add_uas(self):
@@ -165,6 +179,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _handle_hangup_all(self):
         self.hangupAll.emit()
+
+    def _handle_mute_all(self):
+        for ua, state in self._ua_states.items():
+            if state.active_call_id is None:
+                continue
+            self._apply_mute_state(ua, True)
+        self.muteAll.emit()
 
     def _handle_add_uas_data(self, start_account: int, count: int):
         self.addUserAgents.emit(start_account, count)
@@ -183,6 +204,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         user_agent = UserAgentWidget(ua, self)
         user_agent.hangupButtonClicked.connect(self._hangup_call)
         user_agent.deleteButtonClicked.connect(self.deleteUA)
+        user_agent.muteButtonClicked.connect(self._handle_mute)
+        user_agent.setMuted(True)
         layout.addWidget(user_agent)
 
         self.uaScrollLayout.insertWidget(at_index, item)
@@ -207,6 +230,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _handle_call_closed(self, ua: UserAgent, ev: Event):
         state = self._ua_states[ua]
         state.active_call_id = None
+        self._apply_mute_state(ua, True)
         state.widget.setActiveCall(False)
 
         if ua == self._active_ua:
@@ -230,12 +254,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _handle_hangup_call_btn_clicked(self):
         self._hangup_call(self._active_ua)
 
+    def _handle_mute_active_ua(self):
+        if self._active_ua is None:
+            return
+        self._handle_mute(self._active_ua)
+
+    def _handle_mute(self, ua: UserAgent):
+        state = self._ua_states[ua]
+        if state.active_call_id is None:
+            return
+
+        muted = not state.muted
+        self._apply_mute_state(ua, muted)
+        self.setMuteUA.emit(ua, muted)
+
+    def _handle_mute_state_changed(self, ua: UserAgent, muted: bool):
+        self._apply_mute_state(ua, muted)
+
     def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent):
         if op == ProtocolOperation.HANGUP:
             self._hangup_call(ua)
 
     def _handle_ua_removed(self, ua: UserAgent):
-        state = self._ua_states.pop(ua)
+        if self._unmuted_ua == ua:
+            self._unmuted_ua = None
+
+        state = self._ua_states.pop(ua, None)
+        if state is None:
+            return
         state.list_item.deleteLater()
         if ua == self._active_ua:
             self._set_active_ua(None)
@@ -290,6 +336,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.callGroupBox.setVisible(visible)
         if visible:
             self.callNumberValue.setText(state.active_call_id)
+            self._update_active_mute_button(state)
 
     def _hangup_call(self, ua: UserAgent):
         state = self._ua_states[ua]
@@ -301,6 +348,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if ua == self._active_ua:
             self.callGroupBox.setVisible(False)
+
+    def _apply_mute_state(self, ua: UserAgent, muted: bool) -> None:
+        state = self._ua_states.get(ua)
+        if state is None:
+            return
+
+        if not muted and self._unmuted_ua is not None and self._unmuted_ua != ua:
+            prev_state = self._ua_states.get(self._unmuted_ua)
+            if prev_state is not None:
+                prev_state.muted = True
+                prev_state.widget.setMuted(True)
+                if self._active_ua == self._unmuted_ua and prev_state.active_call_id is not None:
+                    self._update_active_mute_button(prev_state)
+
+        state.muted = muted
+        state.widget.setMuted(muted)
+
+        if muted:
+            if self._unmuted_ua == ua:
+                self._unmuted_ua = None
+        else:
+            self._unmuted_ua = ua
+
+        if self._active_ua == ua and state.active_call_id is not None:
+            self._update_active_mute_button(state)
+
+    def _update_active_mute_button(self, state: UserAgentState) -> None:
+        self.muteUAButton.setText("Unmute" if state.muted else "Mute")
 
     def _fill_log_window(self, level: int):
         self.logValue.clear()

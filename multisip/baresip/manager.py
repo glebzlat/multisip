@@ -22,6 +22,7 @@ class Operation(StrEnum):
     REQUEST_REGINFO = "request_reginfo"
     DIAL = "dial"
     MUTE = "mute"
+    HOLD = "hold"
     RESUME = "resume"
     ACCEPT = "accept"
     HANGUP = "hangup"
@@ -236,6 +237,14 @@ class CtrlTcpManager(QObject):
             final_operation=Operation.MUTE,
             final_params=None,
             final_sender=lambda token: self._call_protocol("mute", None, token=token),
+        )
+
+    def hold(self, ua: UserAgent) -> None:
+        self._run_on_current_call(
+            ua=ua,
+            final_operation=Operation.HOLD,
+            final_params=None,
+            final_sender=lambda token: self._call_protocol("hold", None, token=token),
         )
 
     def resume(self, ua: UserAgent) -> None:

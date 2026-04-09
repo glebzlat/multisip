@@ -11,5 +11,5 @@ __all__ = [
     "Operation",
     "Event",
     "create_config",
-    "Process"
+    "Process",
 ]

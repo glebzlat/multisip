@@ -2,6 +2,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import QWidget, QSizePolicy
 from PySide6.QtCore import Signal
+from PySide6.QtGui import QIcon
 
 from ..user_agent import UserAgent
 from ..ui.user_agent import Ui_UserAgent
@@ -36,6 +37,14 @@ class UserAgentWidget(QWidget, Ui_UserAgent):
     def setActiveCall(self, value: bool):
         self.uaHangupButton.setVisible(value)
         self.uaMuteButton.setVisible(value)
+
+    def setMuted(self, value: bool):
+        icon = None
+        if value:
+            icon = QIcon(":/icons/muted.svg")
+        else:
+            icon = QIcon(":/icons/unmuted.svg")
+        self.uaMuteButton.setIcon(icon)
 
     def _handle_hangup_button_clicked(self):
         self.hangupButtonClicked.emit(self._ua)

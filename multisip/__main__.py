@@ -1,13 +1,13 @@
 import sys
 import shutil
 
+import multisip.resources
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
-
-import multisip.resources
 
 from .widgets.main_window import MainWindow
 from .worker import Worker
@@ -37,9 +37,11 @@ def main():
             shutil.copy(file_handler.baseFilename, outfile)
 
         window = MainWindow(loop, app_config, tail_handler)
+
         window.setLogLevel.connect(lambda level: root_logger.setLevel(level))
         window.clearLogs.connect(clear_logs)
         window.exportLogs.connect(export_logs)
+
         log_bridge.lineAdded.connect(
             window.handle_log_line_added,
             Qt.ConnectionType.QueuedConnection
