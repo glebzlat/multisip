@@ -47,7 +47,10 @@ class TailQtHandler(logging.Handler):
         return self._max_lines
 
 
-def configure_logging(log_dir: Path, config: Config) -> tuple[logging.Logger, LogBridge, TailQtHandler]:
+def configure_logging(
+    log_dir: Path,
+    config: Config
+) -> tuple[logging.Logger, LogBridge, TailQtHandler, logging.handlers.RotatingFileHandler]:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger(LOG_PREFIX)
@@ -79,7 +82,7 @@ def configure_logging(log_dir: Path, config: Config) -> tuple[logging.Logger, Lo
     logger.addHandler(file_handler)
     logger.addHandler(tail_handler)
 
-    return logger, bridge, tail_handler
+    return logger, bridge, tail_handler, file_handler
 
 
 def get_logger(name: str) -> logging.Logger:

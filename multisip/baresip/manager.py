@@ -141,6 +141,8 @@ class CtrlTcpManager(QObject):
 
         self.managerError.connect(self._on_error)
         self.requestSent.connect(self._on_request_sent)
+        self.transactionCompleted.connect(self._on_transaction_completion)
+        self.transactionFailed.connect(self._on_transaction_failure)
 
         self._log = get_logger(self.__class__.__name__)
 
@@ -588,6 +590,12 @@ class CtrlTcpManager(QObject):
             data = dataclasses.asdict(rq)
             data["operation"] = rq.operation.value
             self._log.debug("request sent: %s", data)
+
+    def _on_transaction_completion(self, tr: Transaction) -> None:
+        self._log.info("transaction completed successfully: %s", tr)
+
+    def _on_transaction_failure(self, tr: Transaction, data: dict) -> None:
+        self._log.error("transaction failed: %s, %s", tr, data)
 
     # -------------------------------------------------------------------------
     # Registration state helpers

@@ -2,6 +2,7 @@ import logging
 
 from typing import Optional, Iterable
 from dataclasses import dataclass
+from datetime import datetime
 
 from PySide6.QtCore import Qt, QThread, Signal, QMetaObject, Slot
 from PySide6.QtWidgets import (
@@ -13,7 +14,8 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QSizePolicy,
     QSpacerItem,
-    QGroupBox
+    QGroupBox,
+    QFileDialog
 )
 from PySide6.QtGui import QPalette, QTextCursor
 
@@ -80,6 +82,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     setLogLevel = Signal(int)
     clearLogs = Signal()
+    exportLogs = Signal(str)  # path to the file
 
     def __init__(self, worker: Worker, config: Config, log_handler):
         super().__init__()
@@ -128,6 +131,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.displayLevelSelector.currentTextChanged.connect(self._handle_set_display_level)
 
         self.clearLogsButton.clicked.connect(self._handle_clear_logs)
+        self.exportLogsButton.clicked.connect(self._handle_export_logs)
 
     def _setup_widgets(self):
         self.uaScroll = QWidget(self)
@@ -255,12 +259,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         log_level = self._debug_levels[text]
-
-        self.logValue.clear()
-        self._n_log_lines = 0
-        for line in self._log_handler.lines(log_level):
-            self.logValue.appendHtml(f"<p>{line}</p>")
-            self._n_log_lines += 1
+        self._fill_log_window(log_level)
 
     def _handle_clear_logs(self):
         self.logValue.clear()
@@ -268,7 +267,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.clearLogs.emit()
 
     def _handle_export_logs(self):
-        self.exportLogs.emit()
+        ftime = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            caption="Save File",
+            dir=f"multisip_{ftime}.log",
+            filter="Text Files (*.txt);;All Files (*)"
+        )
+
+        if file_path is None:
+            return
+
+        self.exportLogs.emit(file_path)
 
     def _set_active_ua(self, ua: Optional[UserAgent]) -> None:
         self._active_ua = ua
@@ -302,6 +312,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if ua == self._active_ua:
             self.callGroupBox.setVisible(False)
+
+    def _fill_log_window(self, level: int):
+        self.logValue.clear()
+        self._n_log_lines = 0
+        for line in self._log_handler.lines(level):
+            self.logValue.appendHtml(f"<p>{line}</p>")
+            self._n_log_lines += 1
 
     @Slot(str)
     def handle_log_line_added(self, line: str) -> None:

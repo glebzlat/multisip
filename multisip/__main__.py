@@ -1,5 +1,5 @@
 import sys
-import logging
+import shutil
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -23,7 +23,7 @@ def main():
 
     with TemporaryDirectory() as tmpdir:
         tmpdir_path = Path(tmpdir)
-        root_logger, log_bridge, tail_handler = configure_logging(tmpdir_path, app_config)
+        root_logger, log_bridge, tail_handler, file_handler = configure_logging(tmpdir_path, app_config)
 
         loop = Worker(app_config, tmpdir_path)
 
@@ -31,9 +31,13 @@ def main():
             clear_log_file(root_logger)
             tail_handler.clear()
 
+        def export_logs(outfile: str):
+            shutil.copy(file_handler.baseFilename, outfile)
+
         window = MainWindow(loop, app_config, tail_handler)
         window.setLogLevel.connect(lambda level: root_logger.setLevel(level))
         window.clearLogs.connect(clear_logs)
+        window.exportLogs.connect(export_logs)
         log_bridge.lineAdded.connect(
             window.handle_log_line_added,
             Qt.ConnectionType.QueuedConnection
