@@ -25,6 +25,8 @@ def main():
         tmpdir_path = Path(tmpdir)
         root_logger, log_bridge, tail_handler, file_handler = configure_logging(tmpdir_path, app_config)
 
+        root_logger.setLevel(app_config.log_level.value)
+
         loop = Worker(app_config, tmpdir_path)
 
         def clear_logs():

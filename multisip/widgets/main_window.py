@@ -89,13 +89,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle("MultiSIP")
 
-        self._debug_levels = {
-            "CRITICAL": logging.CRITICAL,
-            "ERROR": logging.ERROR,
-            "WARNING": logging.WARNING,
-            "INFO": logging.INFO,
-            "DEBUG": logging.DEBUG
-        }
+        self._config = config
 
         self._setup_widgets()
         self._connect_signals()
@@ -113,11 +107,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._log_handler = log_handler
         self._n_log_lines = 0
 
-        # TODO: actually this doesn't work, because worker thread starts
-        # before the UI. It would be correct to get the level from the
-        # config.
-        self.logLevelSelector.setCurrentText("WARNING")
-        self.displayLevelSelector.setCurrentText("WARNING")
+        self.logLevelSelector.setCurrentText(self._config.log_level.name)
+        self.displayLevelSelector.setCurrentText(self._config.log_level.name)
 
     def _connect_signals(self):
         self.addUserAgentsButton.clicked.connect(self._handle_add_uas)
@@ -127,8 +118,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.deleteUAButton.clicked.connect(self._handle_delete_ua)
         self.hangupCallButton.clicked.connect(self._handle_hangup_call_btn_clicked)
 
-        self.logLevelSelector.currentTextChanged.connect(self._handle_set_log_level)
-        self.displayLevelSelector.currentTextChanged.connect(self._handle_set_display_level)
+        self.logLevelSelector.activated.connect(self._handle_set_log_level)
+        self.displayLevelSelector.activated.connect(self._handle_set_display_level)
 
         self.clearLogsButton.clicked.connect(self._handle_clear_logs)
         self.exportLogsButton.clicked.connect(self._handle_export_logs)
@@ -142,8 +133,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self._set_active_ua(None)
 
-        self.logLevelSelector.addItems(self._debug_levels.keys())
-        self.displayLevelSelector.addItems(self._debug_levels.keys())
+        self.logLevelSelector.addItems(self._config.log_level.names())
+        self.displayLevelSelector.addItems(self._config.log_level.names())
+
+        self.tabWidget.setCurrentIndex(0)
 
     def _setup_worker(self):
         self._worker.manager.callEstablished.connect(self._handle_incoming_call, type=Qt.ConnectionType.QueuedConnection)
@@ -247,18 +240,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if ua == self._active_ua:
             self._set_active_ua(None)
 
-    def _handle_set_log_level(self, text: str):
-        if text not in self._debug_levels:
-            return
-
-        log_level = self._debug_levels[text]
+    def _handle_set_log_level(self, index: int):
+        level_name = self._config.log_level.names()[index]
+        log_level = self._config.log_level.from_string(level_name)
         self.setLogLevel.emit(log_level)
 
-    def _handle_set_display_level(self, text: str):
-        if text not in self._debug_levels:
-            return
-
-        log_level = self._debug_levels[text]
+    def _handle_set_display_level(self, index: int):
+        level_name = self._config.log_level.names()[index]
+        log_level = self._config.log_level.from_string(level_name)
         self._fill_log_window(log_level)
 
     def _handle_clear_logs(self):
