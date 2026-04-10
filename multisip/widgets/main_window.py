@@ -166,7 +166,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self._worker_thread = QThread()
         self._worker.moveToThread(self._worker_thread)
-        self.addUserAgents.connect(self._worker.add_uas, type=Qt.ConnectionType.QueuedConnection)
+        self.addUserAgents.connect(self._worker.add_uas, type=Qt.ConnectionType.BlockingQueuedConnection)
         self._worker.userAgentAdded.connect(self._handle_ua_added, type=Qt.ConnectionType.QueuedConnection)
         self._worker.muteStateChanged.connect(self._handle_mute_state_changed, type=Qt.ConnectionType.QueuedConnection)
         self._worker_thread.start()
