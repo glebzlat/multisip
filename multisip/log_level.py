@@ -15,7 +15,8 @@ class LogLevel(IntEnum):
 
     @staticmethod
     def names() -> list[str]:
-        return list(n for n in dir(LogLevel) if str.isupper(n))
+        names_iter = (n for n in dir(LogLevel) if str.isupper(n))
+        return sorted(names_iter, key=lambda name: getattr(LogLevel, name))
 
     @staticmethod
     def from_string(s: str) -> Optional[LogLevel]:
