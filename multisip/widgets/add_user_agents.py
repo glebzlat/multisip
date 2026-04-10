@@ -19,8 +19,16 @@ class AddUserAgents(QWidget, Ui_Form):
         self.regex_validator = QRegularExpressionValidator(self.int_re)
 
         self.startNumberInput.setValidator(self.regex_validator)
+        self.startNumberInput.textChanged.connect(self.handle_startNumberInput_textChanged)
+
+        self.addUserAgentsButton.setEnabled(False)
         self.addUserAgentsButton.clicked.connect(self.handle_addUserAgentsButton_clicked)
+
         self.cancelButton.clicked.connect(self.handle_cancelButton_clicked)
+
+    def handle_startNumberInput_textChanged(self, text: str):
+        enable_add_button = len(text) != 0
+        self.addUserAgentsButton.setEnabled(enable_add_button)
 
     def handle_addUserAgentsButton_clicked(self):
         start_account = int(self.startNumberInput.text())
