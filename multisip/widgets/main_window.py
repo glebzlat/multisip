@@ -273,7 +273,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent):
         if op == ProtocolOperation.HANGUP:
-            self._hangup_call(ua)
+            self._hangup_call_ui(ua)
 
     def _handle_ua_removed(self, ua: UserAgent):
         if self._unmuted_ua == ua:
@@ -344,8 +344,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         self.hangupCall.emit(ua)
-        state.widget.setActiveCall(False)
+        self._hangup_call_ui(ua, state)
 
+    def _hangup_call_ui(self, ua: UserAgent, state: UserAgentState):
+        state.widget.setActiveCall(False)
         if ua == self._active_ua:
             self.callGroupBox.setVisible(False)
 
