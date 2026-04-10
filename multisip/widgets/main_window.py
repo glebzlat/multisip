@@ -117,8 +117,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.logLevelSelector.setCurrentText(self._config.log_level.name)
         self.displayLevelSelector.setCurrentText(self._config.log_level.name)
 
-        self._fill_log_window(logging.WARNING)
-
     def _connect_signals(self):
         self.addUserAgentsButton.clicked.connect(self._handle_add_uas)
         self.deleteAllButton.clicked.connect(self._handle_delete_all)
