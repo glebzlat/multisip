@@ -72,7 +72,6 @@ class ProcessManager(QObject):
             return
 
         if proc.state() == QProcess.ProcessState.NotRunning:
-            self._cleanup()
             return
 
         if graceful:
@@ -103,7 +102,7 @@ class ProcessManager(QObject):
 
     def _on_finished(self, exit_code: int, exit_status: QProcess.ExitStatus) -> None:
         self.finished.emit(exit_code, exit_status)
-        self._process.deleteLater()
+        self._process = None
 
         if self._running:
             self._running = False
