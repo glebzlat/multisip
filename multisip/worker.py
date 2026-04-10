@@ -27,29 +27,31 @@ class Worker(QObject):
         super().__init__()
 
         self._log = get_logger(self.__class__.__name__)
-        self._log.debug("worker started")
 
         self.config = config
 
         create_config(tmpdir)
-        args = ["-f", str(tmpdir)]
 
+        args = ["-f", str(tmpdir)]
         self.process = Process(arguments=args, parent=self)
-        self.process.start()
 
         self.t = Transport(host="127.0.0.1", port=4444, parent=self)
-        self.t.connect()
-
         self.p = Protocol(self.t, parent=self)
         self.manager = Manager(self.p, parent=self)
-
-        self._connect_signals()
 
         self._ua_indexes = {}
         self._unmuted_ua: Optional[UserAgent] = None
         self._pending_unmute_ua: Optional[UserAgent] = None
 
+        self._connect_signals()
+
+        self.process.start()
+
     def _connect_signals(self):
+        self.process.started.connect(self._handle_process_started)
+
+        self.t.connectedChanged.connect(self._handle_transport_connected)
+
         self.manager.userAgentCreated.connect(self._handle_ua_added)
         self.manager.incomingCall.connect(self._handle_incoming_call)
         self.manager.callEstablished.connect(self._handle_call_established)
@@ -94,6 +96,13 @@ class Worker(QObject):
     @Slot(UserAgent, bool)
     def handle_set_mute(self, ua: UserAgent, value: bool):
         self._set_mute(ua, value)
+
+    def _handle_process_started(self, pid: int):
+        self.t.connect()
+
+    def _handle_transport_connected(self, connected: bool):
+        if connected:
+            self._log.debug("worker components initialized")
 
     def _handle_ua_added(self, ua: UserAgent):
         self.userAgentAdded.emit(ua, self._ua_indexes[ua])
