@@ -88,6 +88,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     clearLogs = Signal()
     exportLogs = Signal(str)  # path to the file
 
+    setProcessRunning = Signal(bool)
+
     def __init__(self, worker: Worker, config: Config, log_handler):
         super().__init__()
         self.setupUi(self)
@@ -133,6 +135,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.clearLogsButton.clicked.connect(self._handle_clear_logs)
         self.exportLogsButton.clicked.connect(self._handle_export_logs)
 
+        self.startStopButton.clicked.connect(self._handle_start_stop)
+
     def _setup_widgets(self):
         self.uaScroll = QWidget(self)
         self.uaScrollLayout = QVBoxLayout(self.uaScroll)
@@ -161,6 +165,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.deleteUA.connect(self._worker.handle_delete_ua, type=Qt.ConnectionType.QueuedConnection)
         self.hangupCall.connect(self._worker.handle_hangup_call, type=Qt.ConnectionType.QueuedConnection)
         self.setMuteUA.connect(self._worker.handle_set_mute, type=Qt.ConnectionType.QueuedConnection)
+
+        self.setProcessRunning.connect(self._worker.set_running, type=Qt.ConnectionType.QueuedConnection)
+
+        self._worker.process.runningChanged.connect(self._handle_process_running, type=Qt.ConnectionType.QueuedConnection)
 
         self._worker_thread = QThread()
         self._worker.moveToThread(self._worker_thread)
@@ -312,6 +320,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         self.exportLogs.emit(file_path)
+
+    def _handle_start_stop(self):
+        self.setProcessRunning.emit(not self._worker.process.is_running())
+
+    def _handle_process_running(self, running: bool):
+        text = "Stop" if running else "Start"
+        self.startStopButton.setText(text)
 
     def _set_active_ua(self, ua: Optional[UserAgent]) -> None:
         self._active_ua = ua

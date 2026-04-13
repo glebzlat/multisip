@@ -27,8 +27,8 @@ class Ui_MainWindow(object):
         MainWindow.resize(709, 596)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        self.gridLayout = QGridLayout(self.centralwidget)
-        self.gridLayout.setObjectName(u"gridLayout")
+        self.verticalLayout_4 = QVBoxLayout(self.centralwidget)
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
         self.tabWidget = QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName(u"tabWidget")
         self.userAgentsTab = QWidget()
@@ -70,7 +70,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 306, 453))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 306, 425))
         self.verticalLayout_3 = QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
@@ -260,13 +260,27 @@ class Ui_MainWindow(object):
 
         self.tabWidget.addTab(self.logsTab, "")
 
-        self.gridLayout.addWidget(self.tabWidget, 0, 0, 1, 1)
+        self.verticalLayout_4.addWidget(self.tabWidget)
+
+        self.horizontalLayout_6 = QHBoxLayout()
+        self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
+        self.startStopButton = QPushButton(self.centralwidget)
+        self.startStopButton.setObjectName(u"startStopButton")
+
+        self.horizontalLayout_6.addWidget(self.startStopButton)
+
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_6.addItem(self.horizontalSpacer_2)
+
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_6)
 
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -299,5 +313,6 @@ class Ui_MainWindow(object):
         self.clearLogsButton.setText(QCoreApplication.translate("MainWindow", u"Clear", None))
         self.exportLogsButton.setText(QCoreApplication.translate("MainWindow", u"Export logs...", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.logsTab), QCoreApplication.translate("MainWindow", u"Logs", None))
+        self.startStopButton.setText(QCoreApplication.translate("MainWindow", u"Start", None))
     # retranslateUi
 

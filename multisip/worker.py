@@ -45,8 +45,6 @@ class Worker(QObject):
 
         self._connect_signals()
 
-        self.process.start()
-
     def _connect_signals(self):
         self.process.started.connect(self._handle_process_started)
 
@@ -58,6 +56,21 @@ class Worker(QObject):
         self.manager.callClosed.connect(self._handle_call_closed)
         self.manager.userAgentDeleted.connect(self._handle_ua_deleted)
         self.manager.transactionCompletedSimple.connect(self._handle_transaction_completed)
+
+    @Slot()
+    def start(self):
+        self.process.start()
+
+    @Slot()
+    def stop(self):
+        self.process.stop()
+
+    @Slot()
+    def set_running(self, running: bool):
+        if running is True and not self.process.is_running():
+            self.process.start()
+        else:
+            self.process.stop()
 
     def add_uas(self, start_account_number: int, count: int) -> None:
         prev_uas_count = len(self.manager.user_agents())
@@ -154,8 +167,3 @@ class Worker(QObject):
             self._log.info("unmuting ua: %s", ua)
             self._pending_unmute_ua = ua
             self.manager.resume(ua)
-
-    @Slot()
-    def stop(self):
-        self.process.stop()
-        self.process.waitForFinished(10000)

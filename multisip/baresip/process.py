@@ -79,6 +79,8 @@ class ProcessManager(QObject):
         else:
             proc.kill()
 
+        proc.waitForFinished()
+
     def restart(self) -> None:
         self.stop(graceful=True)
 
@@ -88,9 +90,6 @@ class ProcessManager(QObject):
             self.start()
 
         self.finished.connect(_restart)
-
-    def waitForFinished(self, msecs: int) -> bool:
-        return self._process.waitForFinished(msecs)
 
     def _on_started(self) -> None:
         self._running = True
