@@ -96,8 +96,8 @@ class ProcessManager(QObject):
         self.runningChanged.emit(True)
 
         pid = self.pid()
-        self.started.emit(pid)
         self._log.debug("baresip started: pid=%d", pid)
+        self.started.emit(pid)
 
     def _on_finished(self, exit_code: int, exit_status: QProcess.ExitStatus) -> None:
         self.finished.emit(exit_code, exit_status)
