@@ -36,37 +36,71 @@
           <property name="title">
            <string/>
           </property>
-          <layout class="QGridLayout" name="gridLayout_2">
-           <item row="0" column="0" colspan="3">
-            <widget class="QPushButton" name="addUserAgentsButton">
-             <property name="text">
-              <string>Add User Agents...</string>
+          <layout class="QVBoxLayout" name="verticalLayout_6">
+           <item>
+            <widget class="QWidget" name="globalActions" native="true">
+             <property name="styleSheet">
+              <string notr="true">QGroupBox { padding: 0; }</string>
              </property>
+             <layout class="QVBoxLayout" name="verticalLayout_5">
+              <property name="spacing">
+               <number>6</number>
+              </property>
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QPushButton" name="addUserAgentsButton">
+                <property name="text">
+                 <string>Add User Agents...</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_7">
+                <item>
+                 <widget class="QPushButton" name="muteAllButton">
+                  <property name="text">
+                   <string>Mute All</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="hangupAllButton">
+                  <property name="text">
+                   <string>Hangup All</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="deleteAllButton">
+                  <property name="text">
+                   <string>Delete All</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QPushButton" name="muteAllButton">
-             <property name="text">
-              <string>Mute All</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QPushButton" name="hangupAllButton">
-             <property name="text">
-              <string>Hangup All</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="2">
-            <widget class="QPushButton" name="deleteAllButton">
-             <property name="text">
-              <string>Delete All</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0" colspan="3">
+           <item>
             <widget class="QScrollArea" name="scrollArea">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="horizontalScrollBarPolicy">
               <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
              </property>
@@ -79,7 +113,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>306</width>
-                <height>425</height>
+                <height>423</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_3"/>

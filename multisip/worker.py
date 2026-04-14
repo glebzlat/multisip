@@ -1,3 +1,5 @@
+import time
+
 from pathlib import Path
 from typing import Optional
 
@@ -23,25 +25,29 @@ class Worker(QObject):
     userAgentDeleted = Signal(UserAgent)
     muteStateChanged = Signal(UserAgent, bool)  # ua, muted
 
+    workerReady = Signal()
+
     def __init__(self, config: Config, tmpdir: Path):
         super().__init__()
 
         self._log = get_logger(self.__class__.__name__)
 
+        self._tmpdir = tmpdir
+
         self.config = config
 
         create_config(tmpdir)
 
-        args = ["-f", str(tmpdir)]
+        self._ua_indexes = {}
+        self._unmuted_ua: Optional[UserAgent] = None
+        self._pending_unmute_ua: Optional[UserAgent] = None
+
+        args = ["-f", str(self._tmpdir)]
         self.process = Process(arguments=args, parent=self)
 
         self.t = Transport(host="127.0.0.1", port=4444, parent=self)
         self.p = Protocol(self.t, parent=self)
         self.manager = Manager(self.p, parent=self)
-
-        self._ua_indexes = {}
-        self._unmuted_ua: Optional[UserAgent] = None
-        self._pending_unmute_ua: Optional[UserAgent] = None
 
         self._connect_signals()
 
@@ -75,7 +81,6 @@ class Worker(QObject):
     def add_uas(self, start_account_number: int, count: int) -> None:
         prev_uas_count = len(self.manager.user_agents())
         added_uas_count = 0
-        self._ua_indexes.clear()
 
         for i in range(count):
             user = start_account_number + i
@@ -111,14 +116,29 @@ class Worker(QObject):
         self._set_mute(ua, value)
 
     def _handle_process_started(self, pid: int):
+        time.sleep(0.1)
         self.t.connect()
 
     def _handle_transport_connected(self, connected: bool):
-        if connected:
-            self._log.debug("worker components initialized")
+        if not connected:
+            return
+
+        self._log.debug("worker components initialized")
+        self._log.debug("config is stored in %s", self._tmpdir)
+
+        for ua in self.manager.user_agents():
+            self.manager.create_user_agent(ua)
+
+        self.workerReady.emit()
 
     def _handle_ua_added(self, ua: UserAgent):
-        self.userAgentAdded.emit(ua, self._ua_indexes[ua])
+        index = self._ua_indexes.get(ua)
+        if index is None:
+            # Handle the case when the process was stopped with UAs added.
+            # We are re-creating UAs in-place, so they have no indexes here.
+            return
+        del self._ua_indexes[ua]
+        self.userAgentAdded.emit(ua, index)
 
     def _handle_incoming_call(self, ua: UserAgent, ev: Event):
         self._log.info("incoming call: to %d from %s", ua.user, ev.contact_uri)

@@ -38,6 +38,11 @@ class UserAgentWidget(QWidget, Ui_UserAgent):
         self.uaHangupButton.setVisible(value)
         self.uaMuteButton.setVisible(value)
 
+    def setEnabled(self, value: bool):
+        self.uaHangupButton.setEnabled(value)
+        self.uaMuteButton.setEnabled(value)
+        self.uaDeleteButton.setEnabled(value)
+
     def setMuted(self, value: bool):
         icon = None
         if value:

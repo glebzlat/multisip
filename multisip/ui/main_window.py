@@ -42,40 +42,57 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.userAgentsGroup.sizePolicy().hasHeightForWidth())
         self.userAgentsGroup.setSizePolicy(sizePolicy)
-        self.gridLayout_2 = QGridLayout(self.userAgentsGroup)
-        self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.addUserAgentsButton = QPushButton(self.userAgentsGroup)
+        self.verticalLayout_6 = QVBoxLayout(self.userAgentsGroup)
+        self.verticalLayout_6.setObjectName(u"verticalLayout_6")
+        self.globalActions = QWidget(self.userAgentsGroup)
+        self.globalActions.setObjectName(u"globalActions")
+        self.globalActions.setStyleSheet(u"QGroupBox { padding: 0; }")
+        self.verticalLayout_5 = QVBoxLayout(self.globalActions)
+        self.verticalLayout_5.setSpacing(6)
+        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
+        self.verticalLayout_5.setContentsMargins(0, 0, 0, 0)
+        self.addUserAgentsButton = QPushButton(self.globalActions)
         self.addUserAgentsButton.setObjectName(u"addUserAgentsButton")
 
-        self.gridLayout_2.addWidget(self.addUserAgentsButton, 0, 0, 1, 3)
+        self.verticalLayout_5.addWidget(self.addUserAgentsButton)
 
-        self.muteAllButton = QPushButton(self.userAgentsGroup)
+        self.horizontalLayout_7 = QHBoxLayout()
+        self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
+        self.muteAllButton = QPushButton(self.globalActions)
         self.muteAllButton.setObjectName(u"muteAllButton")
 
-        self.gridLayout_2.addWidget(self.muteAllButton, 1, 0, 1, 1)
+        self.horizontalLayout_7.addWidget(self.muteAllButton)
 
-        self.hangupAllButton = QPushButton(self.userAgentsGroup)
+        self.hangupAllButton = QPushButton(self.globalActions)
         self.hangupAllButton.setObjectName(u"hangupAllButton")
 
-        self.gridLayout_2.addWidget(self.hangupAllButton, 1, 1, 1, 1)
+        self.horizontalLayout_7.addWidget(self.hangupAllButton)
 
-        self.deleteAllButton = QPushButton(self.userAgentsGroup)
+        self.deleteAllButton = QPushButton(self.globalActions)
         self.deleteAllButton.setObjectName(u"deleteAllButton")
 
-        self.gridLayout_2.addWidget(self.deleteAllButton, 1, 2, 1, 1)
+        self.horizontalLayout_7.addWidget(self.deleteAllButton)
+
+
+        self.verticalLayout_5.addLayout(self.horizontalLayout_7)
+
+
+        self.verticalLayout_6.addWidget(self.globalActions)
 
         self.scrollArea = QScrollArea(self.userAgentsGroup)
         self.scrollArea.setObjectName(u"scrollArea")
+        sizePolicy.setHeightForWidth(self.scrollArea.sizePolicy().hasHeightForWidth())
+        self.scrollArea.setSizePolicy(sizePolicy)
         self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 306, 425))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 306, 423))
         self.verticalLayout_3 = QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
 
-        self.gridLayout_2.addWidget(self.scrollArea, 2, 0, 1, 3)
+        self.verticalLayout_6.addWidget(self.scrollArea)
 
 
         self.horizontalLayout.addWidget(self.userAgentsGroup)
