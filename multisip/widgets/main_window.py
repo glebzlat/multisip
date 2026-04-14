@@ -152,29 +152,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.tabWidget.setCurrentIndex(0)
 
     def _setup_worker(self):
-        self._worker.manager.callEstablished.connect(self._handle_incoming_call, type=Qt.ConnectionType.QueuedConnection)
-        self._worker.manager.callClosed.connect(self._handle_call_closed, type=Qt.ConnectionType.QueuedConnection)
-        self._worker.manager.userAgentRegistrationChanged.connect(self._handle_reg_changed)
-        self._worker.manager.transactionCompletedSimple.connect(self._handle_transaction_completed, type=Qt.ConnectionType.QueuedConnection)
-        self._worker.manager.userAgentRemoved.connect(self._handle_ua_removed, type=Qt.ConnectionType.QueuedConnection)
 
-        self.deleteAll.connect(self._worker.handle_delete_all, type=Qt.ConnectionType.QueuedConnection)
-        self.hangupAll.connect(self._worker.handle_hangup_all, type=Qt.ConnectionType.QueuedConnection)
-        self.muteAll.connect(self._worker.handle_mute_all, type=Qt.ConnectionType.QueuedConnection)
+        def connect(emitter, handler):
+            emitter.connect(handler, type=Qt.ConnectionType.QueuedConnection)
 
-        self.deleteUA.connect(self._worker.handle_delete_ua, type=Qt.ConnectionType.QueuedConnection)
-        self.hangupCall.connect(self._worker.handle_hangup_call, type=Qt.ConnectionType.QueuedConnection)
-        self.setMuteUA.connect(self._worker.handle_set_mute, type=Qt.ConnectionType.QueuedConnection)
+        connect(self._worker.manager.callEstablished, self._handle_incoming_call)
+        connect(self._worker.manager.callClosed, self._handle_call_closed)
+        connect(self._worker.manager.userAgentRegistrationChanged, self._handle_reg_changed)
+        connect(self._worker.manager.transactionCompletedSimple, self._handle_transaction_completed)
+        connect(self._worker.manager.userAgentRemoved, self._handle_ua_removed)
 
-        self.setProcessRunning.connect(self._worker.set_running, type=Qt.ConnectionType.QueuedConnection)
+        connect(self.deleteAll, self._worker.handle_delete_all)
+        connect(self.hangupAll, self._worker.handle_hangup_all)
+        connect(self.muteAll, self._worker.handle_mute_all)
 
-        self._worker.process.runningChanged.connect(self._handle_process_running, type=Qt.ConnectionType.QueuedConnection)
+        connect(self.deleteUA, self._worker.handle_delete_ua)
+        connect(self.hangupCall, self._worker.handle_hangup_call)
+        connect(self.setMuteUA, self._worker.handle_set_mute)
+
+        connect(self.setProcessRunning, self._worker.set_running)
+
+        connect(self._worker.process.runningChanged, self._handle_process_running)
 
         self._worker_thread = QThread()
         self._worker.moveToThread(self._worker_thread)
-        self.addUserAgents.connect(self._worker.add_uas, type=Qt.ConnectionType.BlockingQueuedConnection)
-        self._worker.userAgentAdded.connect(self._handle_ua_added, type=Qt.ConnectionType.QueuedConnection)
-        self._worker.muteStateChanged.connect(self._handle_mute_state_changed, type=Qt.ConnectionType.QueuedConnection)
+        connect(self.addUserAgents, self._worker.add_uas)
+        connect(self._worker.userAgentAdded, self._handle_ua_added)
+        connect(self._worker.muteStateChanged, self._handle_mute_state_changed)
         self._worker_thread.start()
 
     def _handle_add_uas(self):
