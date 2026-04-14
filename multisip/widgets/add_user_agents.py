@@ -1,7 +1,7 @@
 from typing import Optional
 
 from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Signal, QRegularExpression
+from PySide6.QtCore import Signal, QRegularExpression, Slot
 from PySide6.QtGui import QRegularExpressionValidator
 
 from ..ui.add_user_agents import Ui_Form
@@ -11,7 +11,7 @@ class AddUserAgents(QWidget, Ui_Form):
 
     returnData = Signal(int, int)
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setupUi(self)
 
@@ -26,23 +26,26 @@ class AddUserAgents(QWidget, Ui_Form):
 
         self.cancelButton.clicked.connect(self.handle_cancelButton_clicked)
 
-    def handle_startNumberInput_textChanged(self, text: str):
+    @Slot(str)
+    def handle_startNumberInput_textChanged(self, text: str) -> None:
         enable_add_button = len(text) != 0
         self.addUserAgentsButton.setEnabled(enable_add_button)
 
-    def handle_addUserAgentsButton_clicked(self):
+    @Slot()
+    def handle_addUserAgentsButton_clicked(self) -> None:
         start_account = int(self.startNumberInput.text())
         count = self.countValue.value()
         self.returnData.emit(start_account, count)
         self.close()
 
-    def handle_cancelButton_clicked(self):
+    @Slot()
+    def handle_cancelButton_clicked(self) -> None:
         self.close()
 
-    def clear(self):
+    def clear(self) -> None:
         self.startNumberInput.clear()
         self.countValue.setValue(1)
 
-    def showClean(self):
+    def showClean(self) -> None:
         self.clear()
         self.show()

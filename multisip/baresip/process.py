@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from PySide6.QtCore import QObject, QProcess, Signal
+from PySide6.QtCore import QObject, QProcess, Signal, Slot
 
 from ..log import get_logger
 
@@ -22,7 +22,7 @@ class ProcessManager(QObject):
         program: str = "baresip",
         arguments: Optional[List[str]] = None,
         parent: Optional[QObject] = None,
-    ):
+    ) -> None:
         super().__init__(parent)
 
         self._log = get_logger(self.__class__.__name__)
@@ -85,12 +85,13 @@ class ProcessManager(QObject):
         self.stop(graceful=True)
 
         # restart after finished signal
-        def _restart(*_):
+        def _restart(*_: object) -> None:
             self.finished.disconnect(_restart)
             self.start()
 
         self.finished.connect(_restart)
 
+    @Slot()
     def _on_started(self) -> None:
         self._running = True
         self.runningChanged.emit(True)
@@ -99,6 +100,7 @@ class ProcessManager(QObject):
         self._log.debug("baresip started: pid=%d", pid)
         self.started.emit(pid)
 
+    @Slot(int, QProcess.ExitStatus)
     def _on_finished(self, exit_code: int, exit_status: QProcess.ExitStatus) -> None:
         self.finished.emit(exit_code, exit_status)
         self._process = None
@@ -109,6 +111,7 @@ class ProcessManager(QObject):
 
         self._log.debug("baresip stopped")
 
+    @Slot(QProcess.ProcessError)
     def _on_error(self, error: QProcess.ProcessError) -> None:
         if self._process is None:
             return

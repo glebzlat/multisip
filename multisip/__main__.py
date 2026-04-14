@@ -15,7 +15,7 @@ from .config import Config
 from .log import configure_logging, clear_log_file
 
 
-def main():
+def main() -> int:
     app = QApplication(sys.argv)
     app_config = Config(
         domain="10.10.2.4",
@@ -29,11 +29,11 @@ def main():
 
         loop = Worker(app_config, tmpdir_path)
 
-        def clear_logs():
+        def clear_logs() -> None:
             clear_log_file(root_logger)
             tail_handler.clear()
 
-        def export_logs(outfile: str):
+        def export_logs(outfile: str) -> None:
             shutil.copy(file_handler.baseFilename, outfile)
 
         window = MainWindow(loop, app_config, tail_handler)

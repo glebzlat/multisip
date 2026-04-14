@@ -19,11 +19,11 @@ class LogBridge(QObject):
 
 class TailQtHandler(logging.Handler):
 
-    def __init__(self, bridge: LogBridge, max_lines: int = 500):
+    def __init__(self, bridge: LogBridge, max_lines: int = 500) -> None:
         super().__init__()
         self._bridge = bridge
         self._max_lines = max_lines
-        self._lines: tuple[str, int] = deque(maxlen=self._max_lines)
+        self._lines: deque[tuple[str, int]] = deque(maxlen=self._max_lines)
 
     def emit(self, record: logging.LogRecord) -> None:
         try:

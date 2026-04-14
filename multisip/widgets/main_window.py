@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QFileDialog
 )
-from PySide6.QtGui import QPalette, QTextCursor
+from PySide6.QtGui import QCloseEvent, QEnterEvent, QMouseEvent, QPalette, QTextCursor
 
 from .add_user_agents import AddUserAgents
 from .user_agent import UserAgentWidget
@@ -42,7 +42,7 @@ class ClickableItem(QWidget):
 
     clicked = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setAutoFillBackground(True)
 
@@ -52,20 +52,20 @@ class ClickableItem(QWidget):
 
         self._inactive_palette = self.palette()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         if not self.isEnabled():
             return
         self.clicked.emit()
         super().mousePressEvent(event)
 
-    def enterEvent(self, event):
+    def enterEvent(self, event: QEnterEvent) -> None:
         if not self.isEnabled():
             return
         self.setPalette(self._hover_palette)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         event.accept()
 
-    def leaveEvent(self, event):
+    def leaveEvent(self, event: QEnterEvent) -> None:
         if not self.isEnabled():
             return
         self.setPalette(self._inactive_palette)
@@ -90,7 +90,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     setProcessRunning = Signal(bool)
 
-    def __init__(self, worker: Worker, config: Config, log_handler):
+    def __init__(self, worker: Worker, config: Config, log_handler: object) -> None:
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle("MultiSIP")
@@ -119,7 +119,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.logLevelSelector.setCurrentText(self._config.log_level.name)
         self.displayLevelSelector.setCurrentText(self._config.log_level.name)
 
-    def _connect_signals(self):
+    def _connect_signals(self) -> None:
         self.addUserAgentsButton.clicked.connect(self._handle_add_uas)
         self.deleteAllButton.clicked.connect(self._handle_delete_all)
         self.hangupAllButton.clicked.connect(self._handle_hangup_all)
@@ -137,7 +137,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.startStopButton.clicked.connect(self._handle_start_stop)
 
-    def _setup_widgets(self):
+    def _setup_widgets(self) -> None:
         self.uaScroll = QWidget(self)
         self.uaScrollLayout = QVBoxLayout(self.uaScroll)
         self.uaScrollLayout.addStretch(0)
@@ -151,9 +151,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self._set_actions_active(False)
 
-    def _setup_worker(self):
+    def _setup_worker(self) -> None:
 
-        def connect(emitter, handler):
+        def connect(emitter: Signal, handler: object) -> None:
             emitter.connect(handler, type=Qt.ConnectionType.QueuedConnection)
 
         connect(self._worker.manager.callEstablished, self._handle_incoming_call)
@@ -183,28 +183,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         connect(self._worker.muteStateChanged, self._handle_mute_state_changed)
         self._worker_thread.start()
 
-    def _handle_add_uas(self):
+    @Slot()
+    def _handle_add_uas(self) -> None:
         self._add_uas_window.showClean()
 
-    def _handle_delete_all(self):
+    @Slot()
+    def _handle_delete_all(self) -> None:
         self.deleteAll.emit()
 
-    def _handle_hangup_all(self):
+    @Slot()
+    def _handle_hangup_all(self) -> None:
         self.hangupAll.emit()
 
-    def _handle_mute_all(self):
+    @Slot()
+    def _handle_mute_all(self) -> None:
         for ua, state in self._ua_states.items():
             if state.active_call_number is None:
                 continue
             self._apply_mute_state(ua, True)
         self.muteAll.emit()
 
-    def _handle_add_uas_data(self, start_account: int, count: int):
+    @Slot(int, int)
+    def _handle_add_uas_data(self, start_account: int, count: int) -> None:
         self.addUserAgents.emit(start_account, count)
 
-    def _handle_ua_added(self, ua: UserAgent, at_index: int):
+    @Slot(UserAgent, int)
+    def _handle_ua_added(self, ua: UserAgent, at_index: int) -> None:
 
-        def _handle_clicked():
+        def _handle_clicked() -> None:
             self._set_active_ua(ua)
 
         item = ClickableItem(parent=self)
@@ -230,7 +236,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self._active_ua is None:
             self._set_active_ua(ua)
 
-    def _handle_incoming_call(self, ua: UserAgent, ev: Event):
+    @Slot(UserAgent, Event)
+    def _handle_incoming_call(self, ua: UserAgent, ev: Event) -> None:
         state = self._ua_states[ua]
         state.active_call_number = ev.user
         state.call_number = ev.user
@@ -240,7 +247,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.callGroupBox.setVisible(True)
             self.callNumberValue.setText(ev.user)
 
-    def _handle_call_closed(self, ua: UserAgent, ev: Event):
+    @Slot(UserAgent, Event)
+    def _handle_call_closed(self, ua: UserAgent, ev: Event) -> None:
         state = self._ua_states[ua]
         state.active_call_number = None
         self._apply_mute_state(ua, True)
@@ -249,7 +257,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if ua == self._active_ua:
             self.callGroupBox.setVisible(False)
 
-    def _handle_reg_changed(self, ua: UserAgent, status: UserAgentStatus):
+    @Slot(UserAgent, UserAgentStatus)
+    def _handle_reg_changed(self, ua: UserAgent, status: UserAgentStatus) -> None:
         state = self._ua_states.get(ua)
         if state is None:
             # "Pending" register event comes before the UA is registered
@@ -261,18 +270,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if ua == self._active_ua:
             self.userAgentStatusValue.setText(state.status.name)
 
-    def _handle_delete_ua(self):
+    @Slot()
+    def _handle_delete_ua(self) -> None:
         self.deleteUA.emit(self._active_ua)
 
-    def _handle_hangup_call_btn_clicked(self):
+    @Slot()
+    def _handle_hangup_call_btn_clicked(self) -> None:
         self._hangup_call(self._active_ua)
 
-    def _handle_mute_active_ua(self):
+    @Slot()
+    def _handle_mute_active_ua(self) -> None:
         if self._active_ua is None:
             return
         self._handle_mute(self._active_ua)
 
-    def _handle_mute(self, ua: UserAgent):
+    @Slot(UserAgent)
+    def _handle_mute(self, ua: UserAgent) -> None:
         state = self._ua_states[ua]
         if state.active_call_number is None:
             return
@@ -281,14 +294,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._apply_mute_state(ua, muted)
         self.setMuteUA.emit(ua, muted)
 
-    def _handle_mute_state_changed(self, ua: UserAgent, muted: bool):
+    @Slot(UserAgent, bool)
+    def _handle_mute_state_changed(self, ua: UserAgent, muted: bool) -> None:
         self._apply_mute_state(ua, muted)
 
-    def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent):
+    @Slot(ProtocolOperation, UserAgent)
+    def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent) -> None:
         if op == ProtocolOperation.HANGUP:
             self._hangup_call_ui(ua)
 
-    def _handle_ua_removed(self, ua: UserAgent):
+    @Slot(UserAgent)
+    def _handle_ua_removed(self, ua: UserAgent) -> None:
         if self._unmuted_ua == ua:
             self._unmuted_ua = None
 
@@ -299,22 +315,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if ua == self._active_ua:
             self._set_active_ua(None)
 
-    def _handle_set_log_level(self, index: int):
+    @Slot(int)
+    def _handle_set_log_level(self, index: int) -> None:
         level_name = self._config.log_level.names()[index]
         log_level = self._config.log_level.from_string(level_name)
         self.setLogLevel.emit(log_level)
 
-    def _handle_set_display_level(self, index: int):
+    @Slot(int)
+    def _handle_set_display_level(self, index: int) -> None:
         level_name = self._config.log_level.names()[index]
         log_level = self._config.log_level.from_string(level_name)
         self._fill_log_window(log_level)
 
-    def _handle_clear_logs(self):
+    @Slot()
+    def _handle_clear_logs(self) -> None:
         self.logValue.clear()
         self._n_log_lines = 0
         self.clearLogs.emit()
 
-    def _handle_export_logs(self):
+    @Slot()
+    def _handle_export_logs(self) -> None:
         ftime = datetime.now().strftime("%Y-%m-%d_%H-%M")
         file_path, _ = QFileDialog.getSaveFileName(
             self,
@@ -328,10 +348,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.exportLogs.emit(file_path)
 
-    def _handle_start_stop(self):
+    @Slot()
+    def _handle_start_stop(self) -> None:
         self.setProcessRunning.emit(not self._worker.process.is_running())
 
-    def _handle_process_running(self, running: bool):
+    @Slot(bool)
+    def _handle_process_running(self, running: bool) -> None:
         if running:
             return
 
@@ -348,7 +370,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self._hangup_call_ui(ua, state)
                 state.active_call_number = None
 
-    def _handle_ready(self):
+    @Slot()
+    def _handle_ready(self) -> None:
         self.startStopButton.setText("Stop")
         self._set_actions_active(True)
         for ua, state in self._ua_states.items():
@@ -377,14 +400,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.callNumberValue.setText(state.active_call_number)
             self._update_active_mute_button(state)
 
-    def _hangup_call(self, ua: UserAgent):
+    def _hangup_call(self, ua: UserAgent) -> None:
         state = self._ua_states[ua]
         if state.active_call_number is None:
             return
 
         self.hangupCall.emit(ua)
 
-    def _hangup_call_ui(self, ua: UserAgent, state: UserAgentState):
+    def _hangup_call_ui(self, ua: UserAgent, state: UserAgentState) -> None:
         state.widget.setActiveCall(False)
         if ua == self._active_ua:
             self.callGroupBox.setVisible(False)
@@ -417,14 +440,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _update_active_mute_button(self, state: UserAgentState) -> None:
         self.muteUAButton.setText("Unmute" if state.muted else "Mute")
 
-    def _fill_log_window(self, level: int):
+    def _fill_log_window(self, level: int) -> None:
         self.logValue.clear()
         self._n_log_lines = 0
         for line in self._log_handler.lines(level):
             self.logValue.appendHtml(f"<p>{line}</p>")
             self._n_log_lines += 1
 
-    def _set_actions_active(self, active: bool):
+    def _set_actions_active(self, active: bool) -> None:
         self.addUserAgentsButton.setEnabled(active)
         self.hangupAllButton.setEnabled(active)
         self.muteAllButton.setEnabled(active)
@@ -445,7 +468,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             cursor.deleteChar()
             self._n_log_lines -= 1
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         QMetaObject.invokeMethod(
             self._worker,
             "stop",

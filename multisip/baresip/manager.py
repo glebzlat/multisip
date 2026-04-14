@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Optional
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, Slot
 
 from .protocol import CtrlTcpProtocol
 from ..user_agent import UserAgent, Status as RegStatus
@@ -121,7 +121,7 @@ class CtrlTcpManager(QObject):
     # Errors
     managerError = Signal(str)
 
-    def __init__(self, protocol: CtrlTcpProtocol, parent: Optional[QObject] = None):
+    def __init__(self, protocol: CtrlTcpProtocol, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self._p = protocol
 
@@ -497,7 +497,8 @@ class CtrlTcpManager(QObject):
     # Response / event handling
     # -------------------------------------------------------------------------
 
-    def _on_response(self, response: dict) -> None:
+    @Slot(dict)
+    def _on_response(self, response: dict[str, Any]) -> None:
         token = str(response.get("token"))
         pending = self._pending_requests.pop(token, None)
         if pending is None:
@@ -508,7 +509,7 @@ class CtrlTcpManager(QObject):
         self.requestFinished.emit(pending, response)
         self._handle_transaction_response(pending, response)
 
-    def _apply_response(self, request: PendingRequest, response: dict) -> None:
+    def _apply_response(self, request: PendingRequest, response: dict[str, Any]) -> None:
         ok = bool(response.get("ok"))
 
         if request.operation == Operation.CREATE_UA:
@@ -544,7 +545,8 @@ class CtrlTcpManager(QObject):
                         if isinstance(line, int):
                             state.current_call_line = line
 
-    def _on_event(self, event: dict) -> None:
+    @Slot(dict)
+    def _on_event(self, event: dict[str, Any]) -> None:
         self._log.debug("event received: %s", event)
         self.eventReceived.emit(event)
 
@@ -587,23 +589,28 @@ class CtrlTcpManager(QObject):
             self.callClosed.emit(state.ua, ev)
             return
 
-    def _on_message(self, message: dict) -> None:
+    @Slot(dict)
+    def _on_message(self, message: dict[str, Any]) -> None:
         self._log.debug("message received: %s", message)
         self.messageReceived.emit(message)
 
+    @Slot(str)
     def _on_error(self, msg: str) -> None:
         self._log.error("error: %s", msg)
 
+    @Slot(PendingRequest)
     def _on_request_sent(self, rq: PendingRequest) -> None:
         if self._log.isEnabledFor(logging.DEBUG):
             data = dataclasses.asdict(rq)
             data["operation"] = rq.operation.value
             self._log.debug("request sent: %s", data)
 
+    @Slot(Transaction)
     def _on_transaction_completion(self, tr: Transaction) -> None:
         self._log.info("transaction completed successfully: %s", tr)
 
-    def _on_transaction_failure(self, tr: Transaction, data: dict) -> None:
+    @Slot(Transaction, dict)
+    def _on_transaction_failure(self, tr: Transaction, data: dict[str, Any]) -> None:
         self._log.error("transaction failed: %s, %s", tr, data)
 
     # -------------------------------------------------------------------------

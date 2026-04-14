@@ -13,7 +13,7 @@ class CtrlTcpProtocol(QObject):
     eventReceived = Signal(dict)
     messageReceived = Signal(dict)
 
-    def __init__(self, transport: CtrlTcpTransport, parent: Optional[QObject] = None):
+    def __init__(self, transport: CtrlTcpTransport, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self._transport = transport
 

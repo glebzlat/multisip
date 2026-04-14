@@ -27,7 +27,7 @@ class Worker(QObject):
 
     workerReady = Signal()
 
-    def __init__(self, config: Config, tmpdir: Path):
+    def __init__(self, config: Config, tmpdir: Path) -> None:
         super().__init__()
 
         self._log = get_logger(self.__class__.__name__)
@@ -51,7 +51,7 @@ class Worker(QObject):
 
         self._connect_signals()
 
-    def _connect_signals(self):
+    def _connect_signals(self) -> None:
         self.process.started.connect(self._handle_process_started)
 
         self.t.connectedChanged.connect(self._handle_transport_connected)
@@ -64,20 +64,21 @@ class Worker(QObject):
         self.manager.transactionCompletedSimple.connect(self._handle_transaction_completed)
 
     @Slot()
-    def start(self):
+    def start(self) -> None:
         self.process.start()
 
     @Slot()
-    def stop(self):
+    def stop(self) -> None:
         self.process.stop()
 
     @Slot()
-    def set_running(self, running: bool):
+    def set_running(self, running: bool) -> None:
         if running is True and not self.process.is_running():
             self.process.start()
         else:
             self.process.stop()
 
+    @Slot(int, int)
     def add_uas(self, start_account_number: int, count: int) -> None:
         prev_uas_count = len(self.manager.user_agents())
         added_uas_count = 0
@@ -92,34 +93,41 @@ class Worker(QObject):
             self._ua_indexes[ua] = prev_uas_count + added_uas_count
             added_uas_count += 1
 
-    def handle_delete_all(self):
+    @Slot()
+    def handle_delete_all(self) -> None:
         for ua in reversed(self.manager.user_agents()):
             self.manager.delete_user_agent(ua)
 
-    def handle_mute_all(self):
+    @Slot()
+    def handle_mute_all(self) -> None:
         self._pending_unmute_ua = None
         self._unmuted_ua = None
         for ua in self.manager.user_agents():
             self._set_mute(ua, True)
 
-    def handle_hangup_all(self):
+    @Slot()
+    def handle_hangup_all(self) -> None:
         self.manager.hangup_all()
 
-    def handle_delete_ua(self, ua: UserAgent):
+    @Slot(UserAgent)
+    def handle_delete_ua(self, ua: UserAgent) -> None:
         self.manager.delete_user_agent(ua)
 
-    def handle_hangup_call(self, ua: UserAgent):
+    @Slot(UserAgent)
+    def handle_hangup_call(self, ua: UserAgent) -> None:
         self.manager.hangup(ua)
 
     @Slot(UserAgent, bool)
-    def handle_set_mute(self, ua: UserAgent, value: bool):
+    def handle_set_mute(self, ua: UserAgent, value: bool) -> None:
         self._set_mute(ua, value)
 
-    def _handle_process_started(self, pid: int):
+    @Slot(int)
+    def _handle_process_started(self, pid: int) -> None:
         time.sleep(0.1)
         self.t.connect()
 
-    def _handle_transport_connected(self, connected: bool):
+    @Slot(bool)
+    def _handle_transport_connected(self, connected: bool) -> None:
         if not connected:
             return
 
@@ -131,7 +139,8 @@ class Worker(QObject):
 
         self.workerReady.emit()
 
-    def _handle_ua_added(self, ua: UserAgent):
+    @Slot(UserAgent, dict)
+    def _handle_ua_added(self, ua: UserAgent) -> None:
         index = self._ua_indexes.get(ua)
         if index is None:
             # Handle the case when the process was stopped with UAs added.
@@ -140,14 +149,17 @@ class Worker(QObject):
         del self._ua_indexes[ua]
         self.userAgentAdded.emit(ua, index)
 
-    def _handle_incoming_call(self, ua: UserAgent, ev: Event):
+    @Slot(UserAgent, Event)
+    def _handle_incoming_call(self, ua: UserAgent, ev: Event) -> None:
         self._log.info("incoming call: to %d from %s", ua.user, ev.contact_uri)
         self.manager.accept(ua)
 
-    def _handle_call_established(self, ua: UserAgent, ev: Event):
+    @Slot(UserAgent, Event)
+    def _handle_call_established(self, ua: UserAgent, ev: Event) -> None:
         self.manager.hold(ua)
 
-    def _handle_call_closed(self, ua: UserAgent, ev: Event):
+    @Slot(UserAgent, Event)
+    def _handle_call_closed(self, ua: UserAgent, ev: Event) -> None:
         self._log.info("call closed: to %d from %s", ua.user, ev.contact_uri)
         if self._unmuted_ua == ua:
             self._unmuted_ua = None
@@ -155,14 +167,16 @@ class Worker(QObject):
             self._pending_unmute_ua = None
         self.muteStateChanged.emit(ua, True)
 
-    def _handle_ua_deleted(self, ua: UserAgent):
+    @Slot(UserAgent, dict)
+    def _handle_ua_deleted(self, ua: UserAgent) -> None:
         if self._unmuted_ua == ua:
             self._unmuted_ua = None
         if self._pending_unmute_ua == ua:
             self._pending_unmute_ua = None
         self.manager.remove_user_agent(ua)
 
-    def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent):
+    @Slot(ProtocolOperation, UserAgent)
+    def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent) -> None:
         if op == ProtocolOperation.HOLD:
             if self._unmuted_ua == ua:
                 self._unmuted_ua = None
@@ -172,7 +186,8 @@ class Worker(QObject):
             self._unmuted_ua = ua
             self.muteStateChanged.emit(ua, False)
 
-    def _set_mute(self, ua: UserAgent, value: bool):
+    @Slot(UserAgent, bool)
+    def _set_mute(self, ua: UserAgent, value: bool) -> None:
         if value:
             self._log.info("muting ua: %s", ua)
             if self._pending_unmute_ua == ua:

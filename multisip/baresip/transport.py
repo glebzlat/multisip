@@ -3,7 +3,7 @@ import uuid
 
 from typing import Any, Optional
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 
 from ..log import get_logger
@@ -18,7 +18,7 @@ class CtrlTcpTransport(QObject):
     protocolError = Signal(str)
     socketError = Signal(str)
 
-    def __init__(self, host: str, port: int, parent: Optional[QObject] = None):
+    def __init__(self, host: str, port: int, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self._log = get_logger(self.__class__.__name__)
 
@@ -45,7 +45,7 @@ class CtrlTcpTransport(QObject):
     def is_connected(self) -> bool:
         return self._socket.state() == QAbstractSocket.SocketState.ConnectedState
 
-    def send_command(self, command: str, params: Optional[str] = None, token: Optional[str] = None):
+    def send_command(self, command: str, params: Optional[str] = None, token: Optional[str] = None) -> str:
         if not self.is_connected():
             raise RuntimeError("ctrl_tcp socket is not connected")
 
@@ -62,19 +62,23 @@ class CtrlTcpTransport(QObject):
 
         return token
 
+    @Slot()
     def _on_connected(self) -> None:
         self._log.debug("connected")
         self.connectedChanged.emit(True)
 
+    @Slot()
     def _on_disconnected(self) -> None:
         self._log.debug("disconnected")
         self.connectedChanged.emit(False)
 
-    def _on_error(self, _err) -> None:
+    @Slot(QAbstractSocket.SocketError)
+    def _on_error(self, _err: QAbstractSocket.SocketError) -> None:
         error = self._socket.errorString()
         self._log.error("transport error: %s", error)
         self.socketError.emit(error)
 
+    @Slot()
     def _on_ready_read(self) -> None:
         self._buffer.extend(bytes(self._socket.readAll()))
 

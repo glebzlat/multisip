@@ -1,7 +1,7 @@
 from typing import Optional
 
 from PySide6.QtWidgets import QWidget, QSizePolicy
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
 
 from ..user_agent import UserAgent
@@ -14,7 +14,7 @@ class UserAgentWidget(QWidget, Ui_UserAgent):
     hangupButtonClicked = Signal(UserAgent)
     deleteButtonClicked = Signal(UserAgent)
 
-    def __init__(self, ua: UserAgent, parent: Optional[QWidget] = None):
+    def __init__(self, ua: UserAgent, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._ua = ua
         self.setupUi(self)
@@ -23,27 +23,27 @@ class UserAgentWidget(QWidget, Ui_UserAgent):
         self.uaAORValue.setText(f"{ua.user}@{ua.domain}")
         self.setActiveCall(False)
 
-    def _connect_signals(self):
+    def _connect_signals(self) -> None:
         self.uaHangupButton.clicked.connect(self._handle_hangup_button_clicked)
         self.uaMuteButton.clicked.connect(self._handle_mute_button_clicked)
         self.uaDeleteButton.clicked.connect(self._handle_delete_button_clicked)
 
-    def _apply_styling(self):
+    def _apply_styling(self) -> None:
         self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
 
         self.uaActionsGroup.setStyleSheet("QGroupBox { border: none; }")
         self.uaActionsGroup.setContentsMargins(0, 0, 0, 0)
 
-    def setActiveCall(self, value: bool):
+    def setActiveCall(self, value: bool) -> None:
         self.uaHangupButton.setVisible(value)
         self.uaMuteButton.setVisible(value)
 
-    def setEnabled(self, value: bool):
+    def setEnabled(self, value: bool) -> None:
         self.uaHangupButton.setEnabled(value)
         self.uaMuteButton.setEnabled(value)
         self.uaDeleteButton.setEnabled(value)
 
-    def setMuted(self, value: bool):
+    def setMuted(self, value: bool) -> None:
         icon = None
         if value:
             icon = QIcon(":/icons/muted.svg")
@@ -51,11 +51,14 @@ class UserAgentWidget(QWidget, Ui_UserAgent):
             icon = QIcon(":/icons/unmuted.svg")
         self.uaMuteButton.setIcon(icon)
 
-    def _handle_hangup_button_clicked(self):
+    @Slot()
+    def _handle_hangup_button_clicked(self) -> None:
         self.hangupButtonClicked.emit(self._ua)
 
-    def _handle_mute_button_clicked(self):
+    @Slot()
+    def _handle_mute_button_clicked(self) -> None:
         self.muteButtonClicked.emit(self._ua)
 
-    def _handle_delete_button_clicked(self):
+    @Slot()
+    def _handle_delete_button_clicked(self) -> None:
         self.deleteButtonClicked.emit(self._ua)
