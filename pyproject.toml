@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multisip"
+version = "0.1.0"
+description = "Desktop SIP control application built with PySide6."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "PySide6==6.11.0",
+]
+
+[project.scripts]
+multisip = "multisip.__main__:main"
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2,<2",
+    "wheel",
+]
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["multisip*"]
+namespaces = true
