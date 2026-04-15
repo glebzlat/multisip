@@ -10,4 +10,4 @@ class Config:
 
     log_file_max_bytes: int = 5 * 1024 * 1024
 
-    log_level = LogLevel.WARNING
+    log_level = LogLevel.INFO
