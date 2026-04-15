@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFontDatabase
 
 from .widgets.main_window import MainWindow
 from .worker import Worker
@@ -17,6 +18,8 @@ from .log import configure_logging, clear_log_file
 
 def main() -> int:
     app = QApplication(sys.argv)
+    app.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont))
+
     app_config = Config(
         domain="10.10.2.4",
     )

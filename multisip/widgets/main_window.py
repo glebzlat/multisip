@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QFileDialog
 )
-from PySide6.QtGui import QCloseEvent, QEnterEvent, QMouseEvent, QPalette, QTextCursor
+from PySide6.QtGui import QCloseEvent, QEnterEvent, QMouseEvent, QPalette, QTextCursor, QFontDatabase
 
 from .add_user_agents import AddUserAgents
 from .user_agent import UserAgentWidget
@@ -143,6 +143,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.uaScrollLayout.addStretch(0)
         self.uaScroll.setLayout(self.uaScrollLayout)
         self.scrollArea.setWidget(self.uaScroll)
+        self.logValue.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
 
         self._set_active_ua(None)
 
