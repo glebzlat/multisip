@@ -97,7 +97,7 @@ class ProcessManager(QObject):
         self.runningChanged.emit(True)
 
         pid = self.pid()
-        self._log.debug("baresip started: pid=%d", pid)
+        self._log.info("baresip started: pid=%d", pid)
         self.started.emit(pid)
 
     @Slot(int, QProcess.ExitStatus)
@@ -109,7 +109,7 @@ class ProcessManager(QObject):
             self._running = False
             self.runningChanged.emit(False)
 
-        self._log.debug("baresip stopped")
+        self._log.info("baresip stopped")
 
     @Slot(QProcess.ProcessError)
     def _on_error(self, error: QProcess.ProcessError) -> None:

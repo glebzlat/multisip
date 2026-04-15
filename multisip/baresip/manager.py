@@ -144,6 +144,7 @@ class CtrlTcpManager(QObject):
         self.requestSent.connect(self._on_request_sent)
         self.transactionCompleted.connect(self._on_transaction_completion)
         self.transactionFailed.connect(self._on_transaction_failure)
+        self.userAgentRegistrationChanged.connect(self._on_registration_changed)
 
         self._log = get_logger(self.__class__.__name__)
 
@@ -575,15 +576,18 @@ class CtrlTcpManager(QObject):
             return
 
         if ev.type == "CALL_INCOMING":
+            self._log.info("incoming call to %d from %s", state.ua.user, ev.peer_uri)
             self.incomingCall.emit(state.ua, ev)
             return
 
         if ev.type == "CALL_ESTABLISHED":
+            self._log.info("call established to %d from %s", state.ua.user, ev.peer_uri)
             state.current_call_id = ev.call_id
             self.callEstablished.emit(state.ua, ev)
             return
 
         if ev.type == "CALL_CLOSED":
+            self._log.info("call closed from %s to %d", ev.peer_uri, state.ua.user)
             state.current_call_id = None
             state.current_call_line = None
             self.callClosed.emit(state.ua, ev)
@@ -607,11 +611,21 @@ class CtrlTcpManager(QObject):
 
     @Slot(Transaction)
     def _on_transaction_completion(self, tr: Transaction) -> None:
-        self._log.info("transaction completed successfully: %s", tr)
+        self._log.info("performed operation: %s on %d", tr.final_operation, tr.ua.user)
+        if self._log.isEnabledFor(logging.DEBUG):
+            data = dataclasses.asdict(tr)
+            self._log.debug("transaction: %s", data)
 
     @Slot(Transaction, dict)
     def _on_transaction_failure(self, tr: Transaction, data: dict[str, Any]) -> None:
-        self._log.error("transaction failed: %s, %s", tr, data)
+        self._log.error("transaction failed: %s on %d", tr.final_operation, tr.ua.user)
+        if self._log.isEnabledFor(logging.DEBUG):
+            tr_data = dataclasses.asdict(tr)
+            self._log.debug("transaction failed: %s, %s", tr_data, data)
+
+    @Slot()
+    def _on_registration_changed(self, ua: UserAgent, status: RegStatus):
+        self._log.info("registration changed for %s: %s", ua.user, status.name)
 
     # -------------------------------------------------------------------------
     # Registration state helpers
@@ -637,7 +651,7 @@ class CtrlTcpManager(QObject):
         state.reg_status = status
         state.last_event = event_type
 
-        if changed:
+        if changed and state.ua is not None:
             self.userAgentRegistrationChanged.emit(state.ua, state.reg_status)
 
     def _update_reginfo_from_text(self, text: str) -> None:
@@ -676,7 +690,7 @@ class CtrlTcpManager(QObject):
             state.reg_status = status
             state.last_event = event_type
 
-            if changed:
+            if changed and state.ua is not None:
                 self.userAgentRegistrationChanged.emit(state.ua, status)
 
     # -------------------------------------------------------------------------

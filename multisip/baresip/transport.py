@@ -64,12 +64,12 @@ class CtrlTcpTransport(QObject):
 
     @Slot()
     def _on_connected(self) -> None:
-        self._log.debug("connected")
+        self._log.info("connected to BareSIP")
         self.connectedChanged.emit(True)
 
     @Slot()
     def _on_disconnected(self) -> None:
-        self._log.debug("disconnected")
+        self._log.info("disconnected from BareSIP")
         self.connectedChanged.emit(False)
 
     @Slot(QAbstractSocket.SocketError)
