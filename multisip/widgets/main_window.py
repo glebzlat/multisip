@@ -186,7 +186,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @Slot()
     def _handle_add_uas(self) -> None:
-        self._add_uas_window.showClean()
+        last_ua = None
+        if self._ua_states:
+            last_ua = sorted(self._ua_states.keys(), key=lambda ua: ua.user)[-1].user
+        self._add_uas_window.show(last_ua)
 
     @Slot()
     def _handle_delete_all(self) -> None:

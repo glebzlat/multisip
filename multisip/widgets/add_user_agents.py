@@ -46,6 +46,8 @@ class AddUserAgents(QWidget, Ui_Form):
         self.startNumberInput.clear()
         self.countValue.setValue(1)
 
-    def showClean(self) -> None:
+    def show(self, start_from_number: Optional[int]) -> None:
         self.clear()
-        self.show()
+        if start_from_number is not None:
+            self.startNumberInput.setText(str(start_from_number))
+        super().show()
