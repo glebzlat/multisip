@@ -130,7 +130,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.hangupCallButton.clicked.connect(self._handle_hangup_call_btn_clicked)
 
         self.logLevelSelector.activated.connect(self._handle_set_log_level)
-        self.displayLevelSelector.activated.connect(self._handle_set_display_level)
+        self.displayLevelSelector.currentTextChanged.connect(self._handle_set_display_level)
 
         self.clearLogsButton.clicked.connect(self._handle_clear_logs)
         self.exportLogsButton.clicked.connect(self._handle_export_logs)
@@ -323,9 +323,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setLogLevel.emit(log_level)
 
     @Slot(int)
-    def _handle_set_display_level(self, index: int) -> None:
-        level_name = self._config.log_level.names()[index]
+    def _handle_set_display_level(self, level_name: str) -> None:
         log_level = self._config.log_level.from_string(level_name)
+        self._log_handler.level = log_level
         self._fill_log_window(log_level)
 
     @Slot()

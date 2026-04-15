@@ -24,8 +24,11 @@ class TailQtHandler(logging.Handler):
         self._bridge = bridge
         self._max_lines = max_lines
         self._lines: deque[tuple[str, int]] = deque(maxlen=self._max_lines)
+        self.level = logging.NOTSET
 
     def emit(self, record: logging.LogRecord) -> None:
+        if record.levelno < self.level:
+            return
         try:
             line = self.format(record)
             self._lines.append((line, record.levelno))
