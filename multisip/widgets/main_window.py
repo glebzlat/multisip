@@ -305,7 +305,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @Slot(ProtocolOperation, UserAgent)
     def _handle_transaction_completed(self, op: ProtocolOperation, ua: UserAgent) -> None:
         if op == ProtocolOperation.HANGUP:
-            self._hangup_call_ui(ua)
+            state = self._ua_states[ua]
+            self._hangup_call_ui(ua, state)
 
     @Slot(UserAgent)
     def _handle_ua_removed(self, ua: UserAgent) -> None:
