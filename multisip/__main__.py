@@ -30,28 +30,32 @@ def main() -> int:
 
         root_logger.setLevel(app_config.log_level.value)
 
-        loop = Worker(app_config, tmpdir_path)
+        try:
+            loop = Worker(app_config, tmpdir_path)
 
-        def clear_logs() -> None:
-            clear_log_file(root_logger)
-            tail_handler.clear()
+            def clear_logs() -> None:
+                clear_log_file(root_logger)
+                tail_handler.clear()
 
-        def export_logs(outfile: str) -> None:
-            shutil.copy(file_handler.baseFilename, outfile)
+            def export_logs(outfile: str) -> None:
+                shutil.copy(file_handler.baseFilename, outfile)
 
-        window = MainWindow(loop, app_config, tail_handler)
+            window = MainWindow(loop, app_config, tail_handler)
 
-        window.setLogLevel.connect(lambda level: root_logger.setLevel(level))
-        window.clearLogs.connect(clear_logs)
-        window.exportLogs.connect(export_logs)
+            window.setLogLevel.connect(lambda level: root_logger.setLevel(level))
+            window.clearLogs.connect(clear_logs)
+            window.exportLogs.connect(export_logs)
 
-        log_bridge.lineAdded.connect(
-            window.handle_log_line_added,
-            Qt.ConnectionType.QueuedConnection
-        )
+            log_bridge.lineAdded.connect(
+                window.handle_log_line_added,
+                Qt.ConnectionType.QueuedConnection
+            )
 
-        window.show()
-        return app.exec()
+            window.show()
+            return app.exec()
+        except Exception as e:
+            root_logger.error("error occured: %s", e)
+            raise
 
 
 if __name__ == "__main__":
