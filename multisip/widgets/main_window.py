@@ -1,20 +1,15 @@
 import logging
 
-from typing import Optional, Iterable
+from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime
 
 from PySide6.QtCore import Qt, QThread, Signal, QMetaObject, Slot
 from PySide6.QtWidgets import (
     QWidget,
-    QLabel,
-    QPushButton,
     QVBoxLayout,
     QHBoxLayout,
     QMainWindow,
-    QSizePolicy,
-    QSpacerItem,
-    QGroupBox,
     QFileDialog
 )
 from PySide6.QtGui import QCloseEvent, QEnterEvent, QMouseEvent, QPalette, QTextCursor, QFontDatabase
