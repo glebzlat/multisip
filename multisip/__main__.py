@@ -5,8 +5,9 @@ import multisip.resources
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Optional
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontDatabase
 
@@ -16,9 +17,34 @@ from .config import Config
 from .log import configure_logging, clear_log_file
 
 
+def ensure_baresip() -> Optional[QWidget]:
+    baresip_path = shutil.which("baresip")
+    if baresip_path is not None:
+        return None
+
+    window = QWidget()
+    window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+    window.setWindowTitle("MultiSIP")
+
+    layout = QVBoxLayout(window)
+    message = QLabel(
+        "MultiSIP requires BareSIP to work. "
+        "Ensure it is installed and is in your PATH.", window)
+    message.setWordWrap(True)
+    layout.addWidget(message)
+
+    window.destroyed.connect(lambda: QApplication.instance().quit())
+    window.show()
+    return window
+
+
 def main() -> int:
     app = QApplication(sys.argv)
     app.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont))
+
+    error_window = ensure_baresip()
+    if error_window is not None:
+        return app.exec()
 
     app_config = Config(
         domain="10.10.2.4",
