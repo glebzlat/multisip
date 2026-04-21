@@ -70,7 +70,7 @@ class ClickableItem(QWidget):
 
 class MainWindow(QMainWindow, Ui_MainWindow):
 
-    addUserAgents = Signal(int, int)  # start_account, count
+    addUserAgents = Signal(str, int, int)  # domain, start_account, count
     deleteAll = Signal()
     hangupAll = Signal()
     muteAll = Signal()
@@ -97,7 +97,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._setup_widgets()
         self._connect_signals()
 
-        self._add_uas_window = AddUserAgents()
+        self._add_uas_window = AddUserAgents(self._config.domain)
         self._add_uas_window.setWindowTitle("MultiSIP - Add User agents")
         self._add_uas_window.returnData.connect(self._handle_add_uas_data)
 
@@ -202,9 +202,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self._apply_mute_state(ua, True)
         self.muteAll.emit()
 
-    @Slot(int, int)
-    def _handle_add_uas_data(self, start_account: int, count: int) -> None:
-        self.addUserAgents.emit(start_account, count)
+    @Slot(str, int, int)
+    def _handle_add_uas_data(self, domain: str, start_account: int, count: int) -> None:
+        self.addUserAgents.emit(domain, start_account, count)
 
     @Slot(UserAgent, int)
     def _handle_ua_added(self, ua: UserAgent, at_index: int) -> None:

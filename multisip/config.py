@@ -1,12 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from .log_level import LogLevel
 
 
 @dataclass
 class Config:
-    domain: Optional[str] = None
+    domain: str = "10.10.2.4"
 
     log_file_max_bytes: int = 5 * 1024 * 1024
 

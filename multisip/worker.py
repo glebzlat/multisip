@@ -78,15 +78,15 @@ class Worker(QObject):
         else:
             self.process.stop()
 
-    @Slot(int, int)
-    def add_uas(self, start_account_number: int, count: int) -> None:
+    @Slot(str, int, int)
+    def add_uas(self, domain: str, start_account_number: int, count: int) -> None:
         prev_uas_count = len(self.manager.user_agents())
         added_uas_count = 0
 
         for i in range(count):
             user = start_account_number + i
             password = user_agent_password_from_user(user)
-            ua = self.manager.add_user_agent(user, password, self.config.domain)
+            ua = self.manager.add_user_agent(user, password, domain)
             if ua is None:
                 continue
             self.manager.create_user_agent(ua)

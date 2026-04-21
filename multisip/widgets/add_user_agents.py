@@ -9,14 +9,22 @@ from ..ui.add_user_agents import Ui_Form
 
 class AddUserAgents(QWidget, Ui_Form):
 
-    returnData = Signal(int, int)
+    returnData = Signal(str, int, int)
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, default_domain: str, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setupUi(self)
 
         self.int_re = QRegularExpression(r"[0-9]+")
         self.regex_validator = QRegularExpressionValidator(self.int_re)
+
+        self._input_valid = False
+
+        self._domains = [default_domain]
+
+        self.domainInput.addItems(self._domains)
+        self.domainInput.setEditable(True)
+        self.domainInput.currentTextChanged.connect(self.handle_domainInput_textChanged)
 
         self.startNumberInput.setValidator(self.regex_validator)
         self.startNumberInput.textChanged.connect(self.handle_startNumberInput_textChanged)
@@ -37,15 +45,22 @@ class AddUserAgents(QWidget, Ui_Form):
             widget.installEventFilter(self)
 
     @Slot(str)
+    def handle_domainInput_textChanged(self, text: str) -> None:
+        self.addUserAgentsButton.setEnabled(self._is_input_valid())
+
+    @Slot(str)
     def handle_startNumberInput_textChanged(self, text: str) -> None:
-        enable_add_button = len(text) != 0
-        self.addUserAgentsButton.setEnabled(enable_add_button)
+        self.addUserAgentsButton.setEnabled(self._is_input_valid())
 
     @Slot()
     def handle_addUserAgentsButton_clicked(self) -> None:
+        domain = self.domainInput.currentText()
+        if domain not in self._domains:
+            self.domainInput.addItem(domain)
+            self._domains.append(domain)
         start_account = int(self.startNumberInput.text())
         count = self.countValue.value()
-        self.returnData.emit(start_account, count)
+        self.returnData.emit(domain, start_account, count)
         self.close()
 
     @Slot()
@@ -79,17 +94,26 @@ class AddUserAgents(QWidget, Ui_Form):
             self.handle_addUserAgentsButton_clicked()
             return True
 
-        if watched in (self, self.startNumberInput, self.countValue) and self._is_input_valid():
+        if watched in (
+            self,
+            self.domainInput,
+            self.startNumberInput,
+            self.countValue
+        ) and self._is_input_valid():
             self.handle_addUserAgentsButton_clicked()
             return True
 
         return super().eventFilter(watched, event)
 
     def _is_input_valid(self) -> bool:
-        return len(self.startNumberInput.text()) != 0
+        return (
+            len(self.domainInput.currentText()) != 0
+            and len(self.startNumberInput.text()) != 0
+        )
 
     def show(self, start_from_number: Optional[int]) -> None:
         self.clear()
+        self.domainInput.setCurrentText(self._domains[-1])
         if start_from_number is not None:
             self.startNumberInput.setText(str(start_from_number))
         self.startNumberInput.setFocus()
