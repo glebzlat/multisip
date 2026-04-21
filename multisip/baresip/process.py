@@ -9,6 +9,8 @@ from ..log import get_logger
 
 class ProcessManager(QObject):
 
+    GRACEFUL_STOP_TIMEOUT_MS = 1000
+
     # Lifecycle
     started = Signal(int)  # pid
     finished = Signal(int, QProcess.ExitStatus)
@@ -32,6 +34,7 @@ class ProcessManager(QObject):
 
         self._process: Optional[QProcess] = None
         self._running: bool = False
+        self._stopping: bool = False
 
     def is_running(self) -> bool:
         return self._running
@@ -74,12 +77,23 @@ class ProcessManager(QObject):
         if proc.state() == QProcess.ProcessState.NotRunning:
             return
 
+        self._stopping = True
+
         if graceful:
             proc.terminate()
+            if proc.waitForFinished(self.GRACEFUL_STOP_TIMEOUT_MS):
+                return
+
+            self._log.warning(
+                "baresip did not stop after SIGTERM within %d ms; forcing kill",
+                self.GRACEFUL_STOP_TIMEOUT_MS,
+            )
+            proc.kill()
+
         else:
             proc.kill()
 
-        proc.waitForFinished()
+        proc.waitForFinished(-1)
 
     def restart(self) -> None:
         self.stop(graceful=True)
@@ -102,6 +116,7 @@ class ProcessManager(QObject):
 
     @Slot(int, QProcess.ExitStatus)
     def _on_finished(self, exit_code: int, exit_status: QProcess.ExitStatus) -> None:
+        self._stopping = False
         self.finished.emit(exit_code, exit_status)
         self._process = None
 
@@ -114,6 +129,10 @@ class ProcessManager(QObject):
     @Slot(QProcess.ProcessError)
     def _on_error(self, error: QProcess.ProcessError) -> None:
         if self._process is None:
+            return
+
+        if self._stopping and error == QProcess.ProcessError.Crashed:
+            self._log.warning("baresip was force-killed after graceful stop timed out")
             return
 
         error_str = self._process.errorString()
