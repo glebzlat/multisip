@@ -42,6 +42,10 @@ class Worker(QObject):
         self._unmuted_ua: Optional[UserAgent] = None
         self._pending_unmute_ua: Optional[UserAgent] = None
 
+        # Process stop operation consists of several steps. _stop_process
+        # signals stop request across consequent handler calls.
+        self._stop_process_scheduled = False
+
         args = ["-f", str(self._tmpdir)]
         self.process = Process(arguments=args, parent=self)
 
@@ -62,6 +66,7 @@ class Worker(QObject):
         self.manager.callClosed.connect(self._handle_call_closed)
         self.manager.userAgentDeleted.connect(self._handle_ua_deleted)
         self.manager.transactionCompletedSimple.connect(self._handle_transaction_completed)
+        self.manager.hangupAllCompleted.connect(self._handle_hangup_all_completed)
 
     @Slot()
     def start(self) -> None:
@@ -76,7 +81,8 @@ class Worker(QObject):
         if running is True and not self.process.is_running():
             self.process.start()
         else:
-            self.process.stop()
+            self._stop_process_scheduled = True
+            self.manager.hangup_all()
 
     @Slot(str, int, int)
     def add_uas(self, domain: str, start_account_number: int, count: int) -> None:
@@ -185,6 +191,12 @@ class Worker(QObject):
             self._pending_unmute_ua = None
             self._unmuted_ua = ua
             self.muteStateChanged.emit(ua, False)
+
+    @Slot()
+    def _handle_hangup_all_completed(self) -> None:
+        if self._stop_process_scheduled:
+            self.process.stop()
+            self._stop_process_scheduled = False
 
     @Slot(UserAgent, bool)
     def _set_mute(self, ua: UserAgent, value: bool) -> None:

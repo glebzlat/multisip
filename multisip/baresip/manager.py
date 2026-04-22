@@ -102,6 +102,8 @@ class CtrlTcpManager(QObject):
 
     transactionCompletedSimple = Signal(Operation, UserAgent)
 
+    hangupAllCompleted = Signal()
+
     # UA lifecycle
     userAgentAdded = Signal(UserAgent)               # UserAgent
     userAgentRemoved = Signal(UserAgent)             # UserAgent
@@ -545,6 +547,10 @@ class CtrlTcpManager(QObject):
                         line = data.get("line")
                         if isinstance(line, int):
                             state.current_call_line = line
+
+        elif request.operation == Operation.HANGUP_ALL:
+            if ok:
+                self.hangupAllCompleted.emit()
 
     @Slot(dict)
     def _on_event(self, event: dict[str, Any]) -> None:
