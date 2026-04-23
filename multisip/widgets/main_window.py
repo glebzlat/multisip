@@ -12,7 +12,16 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QFileDialog
 )
-from PySide6.QtGui import QCloseEvent, QEnterEvent, QMouseEvent, QPalette, QTextCursor, QFontDatabase
+from PySide6.QtGui import (
+    QCloseEvent,
+    QEnterEvent,
+    QMouseEvent,
+    QPalette,
+    QTextCursor,
+    QFontDatabase,
+    QShortcut,
+    QKeySequence
+)
 
 from .add_user_agents import AddUserAgents
 from .user_agent import UserAgentWidget
@@ -104,6 +113,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._worker = worker
         self._setup_worker()
 
+        self._setup_shortcuts()
+
         self._active_ua: Optional[UserAgent] = None
         self._ua_states: dict[UserAgent, UserAgentState] = {}
         self._unmuted_ua: Optional[UserAgent] = None
@@ -178,6 +189,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         connect(self._worker.userAgentAdded, self._handle_ua_added)
         connect(self._worker.muteStateChanged, self._handle_mute_state_changed)
         self._worker_thread.start()
+
+    def _setup_shortcuts(self):
+        self._exit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
+        self._exit_shortcut.activated.connect(self._handle_exit_shortcut)
+
+        self._add_uas_shortcut = QShortcut(QKeySequence("Ctrl+A"), self)
+        self._add_uas_shortcut.activated.connect(self._handle_add_uas_shortcut)
+
+        self._hangup_all_shortcut = QShortcut(QKeySequence("Ctrl+H"), self)
+        self._hangup_all_shortcut.activated.connect(self._handle_hangup_all_shortcut)
+
+        self._mute_all_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
+        self._mute_all_shortcut.activated.connect(self._handle_mute_all_shortcut)
+
+        self._export_log_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
+        self._export_log_shortcut.activated.connect(self._handle_export_log_shortcut)
+
+        self._start_stop_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        self._start_stop_shortcut.activated.connect(self._handle_start_stop_shortcut)
 
     @Slot()
     def _handle_add_uas(self) -> None:
@@ -376,6 +406,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._set_actions_active(True)
         for ua, state in self._ua_states.items():
             state.widget.setEnabled(True)
+
+    @Slot()
+    def _handle_exit_shortcut(self) -> None:
+        self.close()
+
+    @Slot()
+    def _handle_hangup_all_shortcut(self) -> None:
+        if self._is_user_agents_tab_active():
+            self._handle_hangup_all()
+
+    @Slot()
+    def _handle_mute_all_shortcut(self) -> None:
+        if self._is_user_agents_tab_active():
+            self._handle_mute_all()
+
+    @Slot()
+    def _handle_export_log_shortcut(self) -> None:
+        if not self._is_user_agents_tab_active():
+            self._handle_export_logs()
+
+    @Slot()
+    def _handle_add_uas_shortcut(self) -> None:
+        if self._is_user_agents_tab_active():
+            self._handle_add_uas()
+
+    @Slot()
+    def _handle_start_stop_shortcut(self) -> None:
+        self._handle_start_stop()
+
+    def _is_user_agents_tab_active(self) -> bool:
+        return self.tabWidget.currentIndex() == 0
 
     def _set_active_ua(self, ua: Optional[UserAgent]) -> None:
         self._active_ua = ua
