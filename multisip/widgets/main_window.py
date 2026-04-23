@@ -373,7 +373,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             filter="Text Files (*.txt);;All Files (*)"
         )
 
-        if file_path is None:
+        if file_path is None or len(file_path) == 0:
             return
 
         self.exportLogs.emit(file_path)
