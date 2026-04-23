@@ -1,4 +1,4 @@
-import logging
+from __future__ import annotations
 
 from typing import Optional
 from dataclasses import dataclass
@@ -35,7 +35,7 @@ from ..log import get_logger
 
 @dataclass
 class UserAgentState:
-    list_item: QWidget
+    list_item: ClickableItem
     widget: UserAgentWidget
     status: UserAgentStatus = UserAgentStatus.PENDING
     active_call_number: Optional[int] = None
@@ -49,12 +49,33 @@ class ClickableItem(QWidget):
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setAutoFillBackground(True)
-
-        self._hover_palette = self.palette()
-        self._hover_palette.setColor(QPalette.ColorRole.Window, self._hover_palette.color(QPalette.ColorRole.Highlight))
-        self._hover_palette.setColor(QPalette.ColorRole.WindowText, self._hover_palette.color(QPalette.ColorRole.HighlightedText))
+        self._selected = False
 
         self._inactive_palette = self.palette()
+        self._hover_palette = self._make_hover_palette()
+        self._selected_palette = self._make_selected_palette()
+
+    def setSelected(self, value: bool) -> None:
+        self._selected = value
+        self._apply_palette()
+
+    def _apply_palette(self) -> None:
+        if self._selected:
+            self.setPalette(self._selected_palette)
+        else:
+            self.setPalette(self._inactive_palette)
+
+    def _make_hover_palette(self) -> QPalette:
+        palette = self.palette()
+        palette.setColor(QPalette.ColorRole.Window, palette.color(QPalette.ColorRole.AlternateBase))
+        palette.setColor(QPalette.ColorRole.WindowText, palette.color(QPalette.ColorRole.Text))
+        return palette
+
+    def _make_selected_palette(self) -> QPalette:
+        palette = self.palette()
+        palette.setColor(QPalette.ColorRole.Window, palette.color(QPalette.ColorRole.Highlight))
+        palette.setColor(QPalette.ColorRole.WindowText, palette.color(QPalette.ColorRole.HighlightedText))
+        return palette
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if not self.isEnabled():
@@ -65,14 +86,15 @@ class ClickableItem(QWidget):
     def enterEvent(self, event: QEnterEvent) -> None:
         if not self.isEnabled():
             return
-        self.setPalette(self._hover_palette)
+        if not self._selected:
+            self.setPalette(self._hover_palette)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         event.accept()
 
     def leaveEvent(self, event: QEnterEvent) -> None:
         if not self.isEnabled():
             return
-        self.setPalette(self._inactive_palette)
+        self._apply_palette()
         self.setCursor(Qt.CursorShape.ArrowCursor)
         event.accept()
 
@@ -99,28 +121,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle("MultiSIP")
 
+        self._worker = worker
         self._config = config
+        self._log_handler = log_handler
 
         self._log = get_logger(self.__class__.__name__)
 
-        self._setup_widgets()
-        self._connect_signals()
+        self._active_ua: Optional[UserAgent] = None
+        self._ua_states: dict[UserAgent, UserAgentState] = {}
+        self._unmuted_ua: Optional[UserAgent] = None
+        self._n_log_lines = 0
 
         self._add_uas_window = AddUserAgents(self._config.domain)
         self._add_uas_window.setWindowTitle("MultiSIP - Add User agents")
         self._add_uas_window.returnData.connect(self._handle_add_uas_data)
 
-        self._worker = worker
         self._setup_worker()
-
         self._setup_shortcuts()
-
-        self._active_ua: Optional[UserAgent] = None
-        self._ua_states: dict[UserAgent, UserAgentState] = {}
-        self._unmuted_ua: Optional[UserAgent] = None
-
-        self._log_handler = log_handler
-        self._n_log_lines = 0
+        self._setup_widgets()
+        self._connect_signals()
 
         self.logLevelSelector.setCurrentText(self._config.log_level.name)
         self.displayLevelSelector.setCurrentText(self._config.log_level.name)
@@ -447,6 +466,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return self.tabWidget.currentIndex() == 0
 
     def _set_active_ua(self, ua: Optional[UserAgent]) -> None:
+        if self._active_ua is not None:
+            prev_state = self._ua_states.get(self._active_ua)
+            if prev_state is not None:
+                prev_state.list_item.setSelected(False)
+
         self._active_ua = ua
 
         visible = self._active_ua is not None
@@ -458,6 +482,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         state = self._ua_states[ua]
+        state.list_item.setSelected(True)
 
         self.userAgentStatusValue.setText(state.status.name)
         self.userAgentUserValue.setText(str(ua.user))
