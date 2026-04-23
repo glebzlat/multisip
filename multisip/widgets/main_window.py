@@ -203,6 +203,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._mute_all_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
         self._mute_all_shortcut.activated.connect(self._handle_mute_all_shortcut)
 
+        self._delete_all_shortcut = QShortcut(QKeySequence("Ctrl+D"), self)
+        self._delete_all_shortcut.activated.connect(self._handle_delete_all_shortcut)
+
         self._export_log_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
         self._export_log_shortcut.activated.connect(self._handle_export_log_shortcut)
 
@@ -420,6 +423,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _handle_mute_all_shortcut(self) -> None:
         if self._is_user_agents_tab_active():
             self._handle_mute_all()
+
+    @Slot()
+    def _handle_delete_all_shortcut(self) -> None:
+        if self._is_user_agents_tab_active():
+            self._handle_delete_all()
 
     @Slot()
     def _handle_export_log_shortcut(self) -> None:
