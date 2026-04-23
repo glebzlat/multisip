@@ -582,18 +582,18 @@ class CtrlTcpManager(QObject):
             return
 
         if ev.type == "CALL_INCOMING":
-            self._log.info("incoming call to %d from %s", state.ua.user, ev.peer_uri)
+            self._log.info("incoming call: from %s, to: %d", ev.peer_uri, state.ua.user)
             self.incomingCall.emit(state.ua, ev)
             return
 
         if ev.type == "CALL_ESTABLISHED":
-            self._log.info("call established to %d from %s", state.ua.user, ev.peer_uri)
+            self._log.info("call established: from: %s, to: %d", ev.peer_uri, state.ua.user)
             state.current_call_id = ev.call_id
             self.callEstablished.emit(state.ua, ev)
             return
 
         if ev.type == "CALL_CLOSED":
-            self._log.info("call closed from %s to %d", ev.peer_uri, state.ua.user)
+            self._log.info("call closed: from: %s, to: %d, reason: %s", ev.peer_uri, state.ua.user, ev.param)
             state.current_call_id = None
             state.current_call_line = None
             self.callClosed.emit(state.ua, ev)
