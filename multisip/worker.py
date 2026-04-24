@@ -101,8 +101,9 @@ class Worker(QObject):
 
     @Slot()
     def handle_delete_all(self) -> None:
-        for ua in reversed(self.manager.user_agents()):
-            self.manager.delete_user_agent(ua)
+        if self.process.is_running():
+            for ua in reversed(self.manager.user_agents()):
+                self.manager.delete_user_agent(ua)
 
     @Slot()
     def handle_mute_all(self) -> None:
@@ -113,7 +114,8 @@ class Worker(QObject):
 
     @Slot()
     def handle_hangup_all(self) -> None:
-        self.manager.hangup_all()
+        if self.process.is_running():
+            self.manager.hangup_all()
 
     @Slot(UserAgent)
     def handle_delete_ua(self, ua: UserAgent) -> None:

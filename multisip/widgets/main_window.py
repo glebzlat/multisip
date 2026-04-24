@@ -130,6 +130,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._active_ua: Optional[UserAgent] = None
         self._ua_states: dict[UserAgent, UserAgentState] = {}
         self._unmuted_ua: Optional[UserAgent] = None
+        self._process_running = False
         self._n_log_lines = 0
 
         self._add_uas_window = AddUserAgents(self._config.domain)
@@ -422,12 +423,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self._hangup_call_ui(ua, state)
                 state.active_call_number = None
 
+        self._process_running = False
+
     @Slot()
     def _handle_ready(self) -> None:
         self.startStopButton.setText("Stop")
         self._set_actions_active(True)
         for ua, state in self._ua_states.items():
             state.widget.setEnabled(True)
+        self._process_running = True
 
     @Slot()
     def _handle_exit_shortcut(self) -> None:
@@ -455,7 +459,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @Slot()
     def _handle_add_uas_shortcut(self) -> None:
-        if self._is_user_agents_tab_active():
+        if self._is_user_agents_tab_active() and self._process_running:
             self._handle_add_uas()
 
     @Slot()
